@@ -1,0 +1,9 @@
+# Ignore everything in these folders
+dict/*
+tts_models/*
+venv/*
+sample_jsons/*
+ffmpeg.exe
+
+# But keep any .gitkeep files
+!**/.gitkeep
