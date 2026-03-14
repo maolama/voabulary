@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto mt-8">
+    <div class="mb-4">
+        <a href="/words" class="text-indigo-600 hover:underline">&larr; Back to Archive</a>
+    </div>
+    
+    <div class="flex justify-between items-end mb-6">
+        <h1 class="text-5xl font-black text-slate-900">{{ word.word }}</h1>
+        <button onclick="window.playTTSAudio('{{ word.word }}')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-full shadow-sm transition-transform active:scale-95">
+            🔊 Listen
+        </button>
+    </div>
+
+    <div class="grid grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+            <p class="text-xs text-slate-500 uppercase font-bold">Total Reviews</p>
+            <p class="text-2xl font-bold text-slate-800">{{ word.total_reviews }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+            <p class="text-xs text-slate-500 uppercase font-bold">Current Streak</p>
+            <p class="text-2xl font-bold text-blue-600">{{ word.repetitions }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+            <p class="text-xs text-slate-500 uppercase font-bold">Next Interval</p>
+            <p class="text-2xl font-bold text-emerald-600">{{ word.interval }} days</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+            <p class="text-xs text-slate-500 uppercase font-bold">Ease Factor</p>
+            <p class="text-2xl font-bold text-amber-500">{{ "%.2f"|format(word.ease_factor) }}</p>
+        </div>
+    </div>
+
+    <h2 class="text-xl font-bold text-slate-800 mb-4">Local Definitions</h2>
+    
+    <div class="space-y-6">
+        {% for result in results %}
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" x-data="{ expanded: true }">
+            
+            <div class="px-6 flex justify-between items-center border-b border-slate-100 cursor-pointer hover:brightness-95 transition-all" 
+                style="background-color: {{ result.color }}; height: 60px; min-height: 60px;"
+                @click="expanded = !expanded">
+                
+                <div class="flex items-center space-x-3">
+                    <svg class="w-5 h-5 text-slate-700 transition-transform duration-300" 
+                         :class="expanded ? 'rotate-180' : ''" 
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+
+                    <div class="flex flex-col justify-center">
+                        <span class="text-sm font-bold text-slate-800 uppercase tracking-wider">{{ result.name }}</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center">
+                    <button 
+                        type="button"
+                        onclick="event.stopPropagation(); window.manualToggle('{{ result.name }}', this)"
+                        data-mode="full" 
+                        style="height: 40px; padding: 0 20px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: block !important; visibility: visible !important; background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; transition: all 0.2s;"
+                    >
+                        🎯 SHOW PINNED ONLY
+                    </button>
+                </div>
+            </div>
+
+            <div class="px-6 py-4" x-show="expanded" x-transition>
+                <iframe src="/entry/{{ result.name }}/{{ result.safe_query }}?word_id={{ word.id }}" 
+                        class="w-full border-none overflow-hidden min-h-[100px]" 
+                        id="iframe-{{ result.name }}"
+                        scrolling="no"></iframe>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    // 1. Toggle Functionality added to the detail page
+    window.manualToggle = function(dictName, btn) {
+        const iframe = document.getElementById('iframe-' + dictName);
+        const currentMode = btn.getAttribute('data-mode');
+        
+        // Flip the mode
+        const newMode = (currentMode === 'full') ? 'pinned' : 'full';
+        
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({
+                type: 'setFilterMode',
+                mode: newMode
+            }, '*');
+            
+            // Update Button Visuals Explicitly
+            btn.setAttribute('data-mode', newMode);
+            if (newMode === 'pinned') {
+                btn.innerText = '🔍 SHOW FULL ENTRY';
+                btn.style.backgroundColor = '#ffffff'; 
+                btn.style.color = '#1e293b';         
+                btn.style.borderColor = '#94a3b8';   
+            } else {
+                btn.innerText = '🎯 SHOW PINNED ONLY';
+                btn.style.backgroundColor = '#e0e7ff'; 
+                btn.style.color = '#3730a3';         
+                btn.style.borderColor = '#c7d2fe';   
+            }
+        }
+    };
+
+    // 2. Iframe resizing listener
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'resize') {
+            const iframe = document.getElementById('iframe-' + event.data.dict);
+            if (iframe) iframe.style.height = (event.data.height + 30) + 'px';
+        }
+    });
+</script>
+{% endblock %}

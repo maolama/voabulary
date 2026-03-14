@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocab Empire</title>
+    
+    <script src="{{ url_for('static', filename='js/tailwind.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/htmx.min.js') }}"></script>
+    
+    <style>
+        .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+        .htmx-request .htmx-indicator { opacity: 1; }
+        .htmx-request.htmx-indicator { opacity: 1; }
+
+        /* Ensure our custom TTS buttons are always visible and clickable */
+        .tts-btn {
+            display: inline-flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        /* Prevent dictionary text from overlapping the button */
+        .x {
+            display: inline-block;
+            vertical-align: middle;
+        }
+        /* Styling our custom OALD9 buttons */
+        .oald-custom-tts {
+            border: none !important;
+            background: #f0f4ff !important; /* Light indigo */
+            cursor: pointer;
+            line-height: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+        }
+
+        .oald-custom-tts:hover {
+            background: #e0e7ff !important; /* Darker indigo on hover */
+            transform: scale(1.1);
+        }
+
+        .oald-custom-tts svg {
+            display: block !important;
+            width: 14px !important;
+            height: 14px !important;
+        }
+    </style>
+
+    <script>
+        // 1. Global State
+        window.VOICE_STORAGE_KEY = 'vocab_empire_preferred_voice';
+        window.ttsVoices = []; 
+        window.voicesLoaded = false;
+
+        // 2. Browser Voice Loader
+        function extractVoices() {
+            if (!('speechSynthesis' in window)) return false;
+            const currentVoices = window.speechSynthesis.getVoices();
+            if (currentVoices.length > 0) {
+                window.ttsVoices = currentVoices;
+                window.voicesLoaded = true;
+                window.dispatchEvent(new Event('voicesReady'));
+                return true;
+            }
+            return false;
+        }
+
+        // Initialize Browser Voices
+        if ('speechSynthesis' in window) {
+            if (!extractVoices()) {
+                window.speechSynthesis.onvoiceschanged = extractVoices;
+                let pollAttempts = 0;
+                const pollInterval = setInterval(() => {
+                    if (extractVoices() || pollAttempts > 50) clearInterval(pollInterval);
+                    pollAttempts++;
+                }, 100);
+            }
+        }
+
+        // 3. Core TTS Engine Function
+        // We define this as a standalone function and then attach it to window
+        const playAudio = async function(text, customRate = 0.9) {
+            console.log("TTS playing:", text);
+            let savedVoiceData = {};
+            const rawSaved = localStorage.getItem(window.VOICE_STORAGE_KEY);
+            
+            if (rawSaved) {
+                try {
+                    savedVoiceData = JSON.parse(rawSaved);
+                } catch(e) {
+                    savedVoiceData = { type: 'browser', id: rawSaved };
+                }
+            }
+            
+            // --- Backend Routing ---
+            if (savedVoiceData.type === 'backend') {
+                const url = `/api/tts/generate?text=${encodeURIComponent(text)}&provider=${savedVoiceData.provider}&voice_id=${savedVoiceData.id}`;
+                const audio = new Audio(url);
+                audio.playbackRate = customRate;
+                audio.play().catch(e => console.error("Backend Audio playback failed:", e));
+                return;
+            }
+
+            // --- Browser Routing ---
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel(); 
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            let selectedVoice = null;
+            if (savedVoiceData.id && window.ttsVoices.length > 0) {
+                selectedVoice = window.ttsVoices.find(v => v.name === savedVoiceData.id);
+            }
+            if (!selectedVoice && window.ttsVoices.length > 0) {
+                selectedVoice = window.ttsVoices.find(v => v.lang.startsWith('en') && v.localService) || window.ttsVoices[0];
+            }
+
+            if (selectedVoice) utterance.voice = selectedVoice;
+            utterance.pitch = 1;
+            utterance.rate = customRate;
+            window.speechSynthesis.speak(utterance);
+        };
+
+        // 4. Attach to Window Global Scope
+        // This ensures it's available for inline onclick attributes
+        window.playTTSAudio = playAudio;
+
+        // 5. HTMX Integration
+        // Sometimes HTMX swaps can mess with the window scope in specific browsers
+        document.addEventListener('htmx:afterSwap', (event) => {
+            window.playTTSAudio = playAudio;
+        });
+    </script>
+
+    <script>
+        window.saveSense = function(wordId, dictName, htmlContent, btnElement, senseId) {
+            if (!wordId || wordId === 'None') {
+                alert("Please save this word to your 'Empire' first before pinning a meaning!");
+                return;
+            }
+
+            const originalText = btnElement.innerText;
+            btnElement.innerText = "⏳...";
+            btnElement.disabled = true;
+
+            fetch('/api/save_sense', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    word_id: wordId,
+                    dict_name: dictName,
+                    html_content: htmlContent,
+                    sense_id: senseId 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                btnElement.disabled = false;
+                if (data.status === 'success') {
+                    // Grab the parent element (the <li> or <div> block holding the sense)
+                    const parentBlock = btnElement.parentElement;
+
+                    if (data.action === 'pinned') {
+                        btnElement.innerText = "✅ Pinned";
+                        btnElement.style.backgroundColor = "#bbf7d0"; 
+                        btnElement.style.color = "#166534";
+                        
+                        // REAL-TIME UI UPDATE: Add the class so it instantly shows in filtered mode
+                        if (parentBlock) parentBlock.classList.add('live-pinned');
+                    } else {
+                        btnElement.innerText = "📌 Mark";
+                        btnElement.style.backgroundColor = "#e0e7ff"; 
+                        btnElement.style.color = "#4338ca";
+                        
+                        // REAL-TIME UI UPDATE: Remove the class so it instantly hides in filtered mode
+                        if (parentBlock) parentBlock.classList.remove('live-pinned');
+                    }
+                    
+                    // Force the iframe to recalculate its height since content may have just vanished/appeared
+                    if (btnElement.ownerDocument && btnElement.ownerDocument.defaultView.reportHeight) {
+                        setTimeout(btnElement.ownerDocument.defaultView.reportHeight, 50);
+                    }
+                    
+                } else {
+                    alert("Error: " + data.message);
+                    btnElement.innerText = originalText;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                btnElement.innerText = "❌ Error";
+                btnElement.disabled = false;
+            });
+        };
+    </script>
+
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+    <nav class="bg-indigo-600 shadow-lg relative z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <a href="/" class="text-2xl font-bold text-white tracking-tight hover:text-indigo-100 transition">👑 Vocab Empire</a>
+                <div class="flex space-x-4 items-center">
+                    <a href="/" class="text-indigo-100 hover:bg-indigo-500 px-3 py-2 rounded-md font-medium transition">Dashboard</a>
+                    <a href="/search" class="text-indigo-100 hover:bg-indigo-500 px-3 py-2 rounded-md font-medium transition">Dictionary</a>
+                    <a href="/words" class="text-indigo-100 hover:bg-indigo-500 px-3 py-2 rounded-md font-medium transition">My Empire</a>
+                    <a href="/data/data-manager" class="text-indigo-100 hover:bg-indigo-500 px-3 py-2 rounded-md font-medium transition">Vault</a>
+                    <a href="/games" class="text-indigo-100 hover:bg-indigo-500 px-3 py-2 rounded-md font-medium transition">Games 🎲</a>
+                    <a href="/settings" class="text-indigo-100 hover:bg-indigo-500 px-3 py-2 rounded-md font-medium transition">Settings ⚙️</a>
+                    <a href="/review" class="bg-rose-500 hover:bg-rose-400 text-white px-4 py-2 rounded-md font-bold shadow-md transition ml-2">Study Due</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/cdn.min.js') }}"></script>
+
+</body>
+</html>

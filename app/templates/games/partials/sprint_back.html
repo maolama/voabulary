@@ -1,0 +1,15 @@
+<div id="flashcard" class="bg-slate-900 p-12 rounded-3xl shadow-2xl border border-slate-800 text-center animate-fade-in-up text-white">
+    <h2 class="text-3xl font-black text-slate-300 mb-6">{{ word.word }}</h2>
+    <div class="bg-slate-800 p-6 rounded-xl mb-10 text-lg font-medium italic text-indigo-200 shadow-inner">
+        "{{ hint }}"
+    </div>
+    
+    <div class="flex space-x-4">
+        <button hx-get="/games/sprint?exclude_id={{ word.id }}" hx-target="body" class="flex-1 bg-rose-600 hover:bg-rose-500 font-bold py-4 rounded-xl shadow-lg transition">
+            Forgot It
+        </button>
+        <button hx-get="/games/sprint?exclude_id={{ word.id }}" hx-target="body" class="flex-1 bg-emerald-600 hover:bg-emerald-500 font-bold py-4 rounded-xl shadow-lg transition">
+            Got It
+        </button>
+    </div>
+</div>

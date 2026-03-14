@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md mt-10 mb-20">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800">Voice Settings</h2>
+
+    <div class="mb-8">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Primary Voice</label>
+        <div class="flex gap-4">
+            <select id="voice-selector" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border">
+                <option>Loading voices...</option>
+            </select>
+            <button onclick="testShortVoice()" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+                Quick Test
+            </button>
+        </div>
+    </div>
+
+    <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Paragraph Stress Test</label>
+        <textarea id="long-test-text" rows="5" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-3 border mb-4">The journey of a thousand miles begins with a single step; however, it is the consistency of those steps that truly defines our progress. Can you hear the subtle nuances in this voice as it navigates through commas, semicolons, and various emotional inflections? Whether reading a simple vocabulary word or a complex academic sentence, the clarity of the synthesis remains paramount for effective learning.</textarea>
+        
+        <button onclick="testLongVoice()" id="long-test-btn" class="w-full flex justify-center items-center bg-emerald-600 text-white px-4 py-3 rounded-md hover:bg-emerald-700 transition font-semibold">
+            <span id="btn-text">Generate & Play Paragraph</span>
+            <div id="btn-spinner" class="hidden ml-3 animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+        </button>
+    </div>
+
+    <hr class="my-10 border-slate-200">
+
+    <h2 class="text-2xl font-bold mb-2 text-gray-800">Dictionary Preferences</h2>
+    <p class="text-sm text-slate-500 mb-6">Customize the display order and header colors of your dictionary frames.</p>
+
+    <div id="dict-loading" class="text-slate-500 text-sm animate-pulse">Loading dictionaries...</div>
+    
+    <div id="dict-list" class="space-y-3 mb-6 hidden">
+        </div>
+
+    <button onclick="saveDictSettings()" id="save-dict-btn" class="w-full hidden justify-center items-center bg-slate-900 text-white px-4 py-3 rounded-md hover:bg-slate-800 transition font-semibold">
+        <span id="dict-save-text">Save Dictionary Layout</span>
+    </button>
+</div>
+
+<script>
+    // ==========================================
+    // VOICE SETTINGS LOGIC
+    // ==========================================
+    function testShortVoice() {
+        window.playTTSAudio("This is a quick test of the selected voice.");
+    }
+
+    async function testLongVoice() {
+        const text = document.getElementById('long-test-text').value.trim();
+        const btn = document.getElementById('long-test-btn');
+        const spinner = document.getElementById('btn-spinner');
+        const btnText = document.getElementById('btn-text');
+
+        if (!text) return;
+
+        btn.disabled = true;
+        btnText.innerText = "Synthesizing...";
+        spinner.classList.remove('hidden');
+
+        try {
+            await window.playTTSAudio(text);
+        } finally {
+            btn.disabled = false;
+            btnText.innerText = "Generate & Play Paragraph";
+            spinner.classList.add('hidden');
+        }
+    }
+
+    let backendVoicesCache = null;
+    async function populateVoiceList() {
+        const voiceSelector = document.getElementById('voice-selector');
+        let savedVoiceData = {};
+        const rawSaved = localStorage.getItem(window.VOICE_STORAGE_KEY);
+        if (rawSaved) {
+            try { savedVoiceData = JSON.parse(rawSaved); } 
+            catch(e) { savedVoiceData = { type: 'browser', id: rawSaved }; }
+        }
+
+        if (backendVoicesCache === null) {
+            try {
+                const response = await fetch('/api/tts/voices');
+                backendVoicesCache = response.ok ? await response.json() : [];
+            } catch (e) { backendVoicesCache = []; }
+        }
+
+        voiceSelector.innerHTML = '';
+
+        if (backendVoicesCache.length > 0) {
+            const group = document.createElement('optgroup');
+            group.label = "Python Neural Voices";
+            backendVoicesCache.forEach(voice => {
+                const option = document.createElement('option');
+                option.textContent = voice.name;
+                option.value = JSON.stringify({ type: 'backend', provider: voice.provider, id: voice.id });
+                if (savedVoiceData.id === voice.id) option.selected = true;
+                group.appendChild(option);
+            });
+            voiceSelector.appendChild(group);
+        }
+
+        if (window.ttsVoices && window.ttsVoices.length > 0) {
+            const group = document.createElement('optgroup');
+            group.label = "Browser Offline Voices";
+            window.ttsVoices.forEach(voice => {
+                if (voice.lang.startsWith('en')) {
+                    const option = document.createElement('option');
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    option.value = JSON.stringify({ type: 'browser', id: voice.name });
+                    if (savedVoiceData.id === voice.name) option.selected = true;
+                    group.appendChild(option);
+                }
+            });
+            voiceSelector.appendChild(group);
+        }
+    }
+
+    populateVoiceList();
+    window.addEventListener('voicesReady', populateVoiceList);
+    document.getElementById('voice-selector').addEventListener('change', (e) => {
+        if (e.target.selectedIndex >= 0) {
+            localStorage.setItem(window.VOICE_STORAGE_KEY, e.target.value);
+            testShortVoice();
+        }
+    });
+
+    // ==========================================
+    // DICTIONARY PREFERENCES LOGIC (DRAG & DROP)
+    // ==========================================
+    let dictionaries = [];
+    let draggedIndex = null; // Keeps track of what we are dragging
+
+    // 1. Fetch current settings from backend
+    async function loadDictionarySettings() {
+        try {
+            const response = await fetch('/api/dictionaries/config');
+            if (response.ok) {
+                dictionaries = await response.json();
+                renderDictionaryList();
+                document.getElementById('dict-loading').classList.add('hidden');
+                document.getElementById('dict-list').classList.remove('hidden');
+                document.getElementById('save-dict-btn').classList.remove('hidden');
+                document.getElementById('save-dict-btn').classList.add('flex');
+            } else {
+                document.getElementById('dict-loading').innerText = "Failed to load dictionary configurations.";
+            }
+        } catch (error) {
+            console.error("Error loading dict settings:", error);
+            document.getElementById('dict-loading').innerText = "Error loading dictionary configurations.";
+        }
+    }
+
+    // 2. Render the interactive Drag & Drop list
+    function renderDictionaryList() {
+        const container = document.getElementById('dict-list');
+        container.innerHTML = '';
+
+        dictionaries.forEach((dict, index) => {
+            const row = document.createElement('div');
+            const rowOpacity = dict.enabled === false ? 'opacity-50 grayscale' : 'opacity-100';
+            
+            // Setup the row for drag and drop
+            row.draggable = true;
+            row.className = `flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition-all cursor-move hover:shadow-md ${rowOpacity}`;
+            
+            // --- DRAG AND DROP EVENTS ---
+            row.addEventListener('dragstart', (e) => {
+                draggedIndex = index;
+                e.dataTransfer.effectAllowed = 'move';
+                // Slight delay so the "ghost" image looks normal, but the original dims
+                setTimeout(() => row.classList.add('opacity-40', 'scale-95'), 0);
+            });
+
+            row.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                if (index !== draggedIndex) {
+                    row.classList.add('border-indigo-500', 'bg-indigo-50');
+                }
+            });
+
+            row.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Crucial: allows the drop event to fire
+            });
+
+            row.addEventListener('dragleave', () => {
+                row.classList.remove('border-indigo-500', 'bg-indigo-50');
+            });
+
+            row.addEventListener('drop', (e) => {
+                e.preventDefault();
+                row.classList.remove('border-indigo-500', 'bg-indigo-50');
+                
+                // Swap the items in the array!
+                if (draggedIndex !== null && draggedIndex !== index) {
+                    const draggedItem = dictionaries.splice(draggedIndex, 1)[0];
+                    dictionaries.splice(index, 0, draggedItem);
+                    renderDictionaryList(); // Re-render everything in the new order
+                }
+            });
+
+            row.addEventListener('dragend', () => {
+                row.classList.remove('opacity-40', 'scale-95');
+                draggedIndex = null;
+                // Failsafe: Clean up any lingering hover states
+                document.querySelectorAll('#dict-list > div').forEach(el => {
+                    el.classList.remove('border-indigo-500', 'bg-indigo-50');
+                });
+            });
+
+            // --- LEFT SIDE: Drag Handle & Enable Toggle ---
+            const leftSide = document.createElement('div');
+            leftSide.className = "flex items-center space-x-3";
+            
+            // Drag Handle Icon (☰)
+            const dragHandle = document.createElement('div');
+            dragHandle.className = "text-slate-400 hover:text-slate-600";
+            dragHandle.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>`;
+
+            // Enable/Disable Checkbox
+            const toggleWrapper = document.createElement('label');
+            toggleWrapper.className = "flex items-center cursor-pointer space-x-3";
+            
+            const toggleInput = document.createElement('input');
+            toggleInput.type = "checkbox";
+            toggleInput.checked = dict.enabled !== false; 
+            toggleInput.className = "w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer";
+            toggleInput.onchange = (e) => {
+                dict.enabled = e.target.checked;
+                renderDictionaryList(); 
+            };
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = "font-bold text-slate-800 tracking-wide uppercase text-sm select-none";
+            nameSpan.innerText = dict.display_name || dict.name;
+
+            toggleWrapper.appendChild(toggleInput);
+            toggleWrapper.appendChild(nameSpan);
+
+            leftSide.appendChild(dragHandle);
+            leftSide.appendChild(toggleWrapper);
+
+            // --- RIGHT SIDE: Color Picker ---
+            const rightSide = document.createElement('div');
+            rightSide.className = "flex items-center space-x-3";
+            
+            const colorLabel = document.createElement('span');
+            colorLabel.className = "text-xs text-slate-500 uppercase font-bold select-none";
+            colorLabel.innerText = "Header:";
+
+            const colorInput = document.createElement('input');
+            colorInput.type = "color";
+            colorInput.value = dict.color.substring(0, 7); 
+            colorInput.className = "h-8 w-10 rounded cursor-pointer border-0 p-0";
+            colorInput.onchange = (e) => updateDictColor(index, e.target.value);
+
+            rightSide.appendChild(colorLabel);
+            rightSide.appendChild(colorInput);
+
+            row.appendChild(leftSide);
+            row.appendChild(rightSide);
+            container.appendChild(row);
+        });
+    }
+
+    // 3. Update dictionary color
+    function updateDictColor(index, newColor) {
+        dictionaries[index].color = newColor;
+    }
+
+    // 4. Save settings to the backend
+    async function saveDictSettings() {
+        const btn = document.getElementById('save-dict-btn');
+        const btnText = document.getElementById('dict-save-text');
+        
+        btn.disabled = true;
+        btnText.innerText = "Saving...";
+
+        try {
+            const response = await fetch('/api/dictionaries/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dictionaries)
+            });
+
+            if (response.ok) {
+                btnText.innerText = "Saved Successfully! ✓";
+                btn.classList.replace('bg-slate-900', 'bg-emerald-600');
+                btn.classList.replace('hover:bg-slate-800', 'hover:bg-emerald-700');
+                
+                setTimeout(() => {
+                    btnText.innerText = "Save Dictionary Layout";
+                    btn.classList.replace('bg-emerald-600', 'bg-slate-900');
+                    btn.classList.replace('hover:bg-emerald-700', 'hover:bg-slate-800');
+                    btn.disabled = false;
+                }, 2000);
+            } else {
+                throw new Error("Failed to save");
+            }
+        } catch (error) {
+            console.error(error);
+            btnText.innerText = "Error Saving";
+            setTimeout(() => {
+                btnText.innerText = "Save Dictionary Layout";
+                btn.disabled = false;
+            }, 2000);
+        }
+    }
+
+    // Load dict settings on startup
+    document.addEventListener("DOMContentLoaded", loadDictionarySettings);
+
+    // 3. Move dictionary up or down
+    function moveDict(index, direction) {
+        if (index + direction < 0 || index + direction >= dictionaries.length) return;
+        
+        const temp = dictionaries[index];
+        dictionaries[index] = dictionaries[index + direction];
+        dictionaries[index + direction] = temp;
+        
+        renderDictionaryList();
+    }
+
+    // 4. Update dictionary color
+    function updateDictColor(index, newColor) {
+        dictionaries[index].color = newColor;
+    }
+
+    // 5. Save settings to the backend
+    async function saveDictSettings() {
+        const btn = document.getElementById('save-dict-btn');
+        const btnText = document.getElementById('dict-save-text');
+        
+        btn.disabled = true;
+        btnText.innerText = "Saving...";
+
+        try {
+            const response = await fetch('/api/dictionaries/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dictionaries)
+            });
+
+            if (response.ok) {
+                btnText.innerText = "Saved Successfully! ✓";
+                btn.classList.replace('bg-slate-900', 'bg-emerald-600');
+                btn.classList.replace('hover:bg-slate-800', 'hover:bg-emerald-700');
+                
+                setTimeout(() => {
+                    btnText.innerText = "Save Dictionary Layout";
+                    btn.classList.replace('bg-emerald-600', 'bg-slate-900');
+                    btn.classList.replace('hover:bg-emerald-700', 'hover:bg-slate-800');
+                    btn.disabled = false;
+                }, 2000);
+            } else {
+                throw new Error("Failed to save");
+            }
+        } catch (error) {
+            console.error(error);
+            btnText.innerText = "Error Saving";
+            setTimeout(() => {
+                btnText.innerText = "Save Dictionary Layout";
+                btn.disabled = false;
+            }, 2000);
+        }
+    }
+
+    // Load dict settings on startup
+    document.addEventListener("DOMContentLoaded", loadDictionarySettings);
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto mt-8 animate-fade-in-up">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-extrabold text-slate-900">Archive ({{ words|length }} Words)</h1>
+        <a href="/search" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700">+ Add New</a>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Word</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Next Review</th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Streak</th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Lapses</th>
+                    <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 bg-white">
+                {% for word in words %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap font-bold text-slate-800 text-lg">{{ word.word }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                        {{ word.next_review_date.strftime('%Y-%m-%d') }}
+                        <span class="text-xs text-slate-400 ml-1">(in {{ word.interval }} days)</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <span class="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-xs font-bold">{{ word.repetitions }}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-rose-500 font-medium">{{ word.lapses }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        {% if word.interval >= 21 %}
+                            <span class="bg-emerald-100 text-emerald-800 py-1 px-3 rounded-md text-xs font-bold">Mastered</span>
+                        {% else %}
+                            <span class="bg-amber-100 text-amber-800 py-1 px-3 rounded-md text-xs font-bold">Learning</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <a href="/word/{{ word.id }}" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="px-6 py-12 text-center text-slate-500">Your empire is empty. Go search for some words!</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

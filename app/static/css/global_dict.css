@@ -1,0 +1,11 @@
+.oald-custom-tts {
+    border: none !important;
+    background: #f0f4ff !important;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+}
+.oald-custom-tts:hover { background: #e0e7ff !important; transform: scale(1.1); }
+.oald-custom-tts svg { display: block !important; width: 14px !important; height: 14px !important; }

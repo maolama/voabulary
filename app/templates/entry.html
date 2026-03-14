@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    {% if has_css %}
+    <link rel="stylesheet" href="/css/{{ dict_name }}">
+    {% endif %}
+    <style>
+        /* --- 1. BASE STYLES --- */
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            background: transparent; 
+            font-family: sans-serif; 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        #dict-content-wrapper {
+            overflow-wrap: break-word;
+            padding-bottom: 25px; 
+            display: block; 
+            width: 100%;
+        }
+        
+        img { max-width: 100%; height: auto; }
+
+        /* --- 2. PINNING UI --- */
+        .mark-sense-btn {
+            z-index: 100;
+            position: relative;
+            font-family: sans-serif;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            opacity: 0.8;
+        }
+        
+        .mark-sense-btn:hover {
+            opacity: 1;
+            transform: translateY(-1px);
+            filter: brightness(0.95);
+        }
+
+        /* --- 3. DYNAMIC FILTERING LOGIC --- */
+        
+        /* 3.1 GLOBAL HIDE: */
+        body.is-filtered .sn-g, 
+        body.is-filtered .idm-g, 
+        body.is-filtered .sn-gs, 
+        body.is-filtered .collapse, 
+        body.is-filtered .res-g,
+        body.is-filtered .unbox,
+        body.is-filtered .entry {
+            display: none !important;
+        }
+
+        /* 3.2 SELECTIVE SHOW: 
+           Uses a dynamic class so we can toggle visibility in real-time without reloading */
+        body.is-filtered .live-pinned {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        body.is-filtered li.live-pinned {
+            display: list-item !important;
+            margin-left: 20px !important; 
+        }
+
+        body.is-filtered *:has(.live-pinned) {
+            display: block !important;
+            visibility: visible !important;
+        }
+
+
+        /* 3.3 ESSENTIAL METADATA:
+           Keep the main header wrapper visible, but let its children keep their natural layout 
+           so we don't accidentally unhide duplicate screen-reader text. */
+        body.is-filtered .top-container, 
+        body.is-filtered .webtop-g, 
+        body.is-filtered .pron-gs, 
+        body.is-filtered .pos-g, 
+        body.is-filtered .dict-top, 
+        body.is-filtered .h, 
+        body.is-filtered .pos,
+        body.is-filtered .h-g,
+        body.is-filtered .dict-merge {
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        /* Explicitly hide the "verb | noun" jump-link navigation at the top of OALD */
+        /* body.is-filtered .top-container */
+        body.is-filtered .dict-top 
+        {
+            display: none !important;
+        }
+        
+        /* 3.3 ESSENTIAL METADATA:
+        body.is-filtered .top-container, 
+        body.is-filtered .webtop-g, 
+        body.is-filtered .pron-gs, 
+        body.is-filtered .pos-g, 
+        body.is-filtered .dict-top, 
+        body.is-filtered .h, 
+        body.is-filtered .pos,
+        body.is-filtered .h-g,
+        body.is-filtered .dict-merge {
+            display: block !important;
+            visibility: visible !important;
+        } */
+
+        /* FIXED: Removed 3.4 CLEANUP. The .mark-sense-btn will now stay visible! */
+
+        body.is-filtered .entry {
+            border: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="dict-content-wrapper">
+        {{ html_content | safe }}
+    </div>
+
+    <script>
+        const myDict = "{{ dict_name }}";
+        const myPins = {{ pinned_ids | tojson }};
+        console.log(`IFRAME [${myDict}]: Initializing. Pinned IDs from Server:`, myPins);
+
+        // --- NEW: Apply the 'live-pinned' class to all saved pins immediately on load ---
+        myPins.forEach(pid => {
+            const el = document.getElementById(pid);
+            if (el) el.classList.add('live-pinned');
+        });
+
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'setFilterMode') {
+                console.log("LOG [iframe]: Mode change for '{{ dict_name }}' to:", event.data.mode);
+                if (event.data.mode === 'pinned') {
+                    document.body.classList.add('is-filtered');
+                } else {
+                    document.body.classList.remove('is-filtered');
+                }
+                setTimeout(reportHeight, 50); 
+            }
+        });
+
+        function reportHeight() {
+            const wrapper = document.getElementById('dict-content-wrapper');
+            if (!wrapper) return;
+            const height = wrapper.scrollHeight;
+            
+            window.parent.postMessage({ 
+                type: 'resize', 
+                dict: '{{ dict_name }}', 
+                height: height 
+            }, '*');
+        }
+        
+        window.onload = reportHeight;
+        
+        const wrapperElement = document.getElementById('dict-content-wrapper');
+        const observer = new ResizeObserver(reportHeight);
+        observer.observe(wrapperElement);
+
+        document.addEventListener('click', function(e) {
+            let target = e.target.closest('a');
+            if (!target || !target.getAttribute('href')) return;
+            let href = target.getAttribute('href');
+            
+            if (href.startsWith('sound://')) {
+                e.preventDefault();
+                new Audio('/' + href.replace('sound://', '')).play();
+            } else if (href.startsWith('entry://')) {
+                e.preventDefault();
+                window.parent.postMessage({ 
+                    type: 'search', 
+                    word: decodeURIComponent(href.replace('entry://', '')) 
+                }, '*');
+            }
+        });
+    </script>
+</body>
+</html>

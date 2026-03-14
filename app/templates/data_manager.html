@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-5xl mx-auto mt-10">
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-extrabold text-slate-900 mb-3">Data Vault</h1>
+        <p class="text-slate-500">Manage your Empire's vocabulary database.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden" x-data="{ tab: 'text' }">
+            <div class="bg-slate-50 px-8 py-5 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-slate-800">📥 Import Words</h2>
+            </div>
+
+            <div class="flex border-b border-slate-100">
+                <button @click="tab = 'text'" 
+                        :class="tab === 'text' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors">
+                    Manual Entry
+                </button>
+                <button @click="tab = 'file'" 
+                        :class="tab === 'file' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors">
+                    File Upload (.txt / .csv)
+                </button>
+            </div>
+
+            <div class="p-8">
+                <form x-show="tab === 'text'" hx-post="/data/import-text" hx-target="#import-result" class="space-y-4">
+                    <p class="text-xs text-slate-500 font-medium">Type or paste words, one per line:</p>
+                    <textarea name="words_text" rows="6" 
+                              class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" 
+                              placeholder="abandon&#10;ubiquitous&#10;serendipity" required></textarea>
+                    <button type="submit" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-md hover:bg-slate-800 transition transform active:scale-95">
+                        Import List
+                    </button>
+                </form>
+
+                <form x-show="tab === 'file'" x-cloak hx-post="/data/import-file" hx-encoding="multipart/form-data" hx-target="#import-result" class="space-y-4">
+                    <p class="text-xs text-slate-500 font-medium">Upload a .txt or .csv file:</p>
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:bg-slate-50 transition cursor-pointer relative">
+                        <input type="file" name="file" accept=".csv,.txt" required
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <span class="text-3xl block mb-2">📁</span>
+                        <span class="text-sm font-bold text-indigo-600 block">Click to browse or drag file here</span>
+                        <span class="text-xs text-slate-400 mt-1 block">Supports newline separated TXT or standard CSV</span>
+                    </div>
+
+                    <div class="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">CSV Format Guide</p>
+                        <pre class="text-xs text-slate-700 font-mono leading-relaxed">abandon, "gre, verb"
+ubiquitous, daily
+serendipity</pre>
+                        <p class="text-[10px] text-slate-400 mt-2 border-t border-slate-200 pt-2">
+                            <b>Col 1:</b> Word (Required)<br>
+                            <b>Col 2:</b> Tags (Optional. Wrap in quotes if using multiple comma-separated tags).
+                        </p>
+                    </div>
+
+                    <button type="submit" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-md hover:bg-slate-800 transition transform active:scale-95">
+                        Process File
+                    </button>
+                </form>
+
+                <div id="import-result" class="mt-4 empty:hidden"></div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden" x-data="{ tab: 'file' }">
+            <div class="bg-slate-50 px-8 py-5 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-slate-800">📤 Export Backup</h2>
+            </div>
+
+            <div class="flex border-b border-slate-100">
+                <button @click="tab = 'file'" 
+                        :class="tab === 'file' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors">
+                    Download File
+                </button>
+                <button @click="tab = 'text'" 
+                        :class="tab === 'text' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors">
+                    Copy to Clipboard
+                </button>
+            </div>
+
+            <div class="p-8">
+                <div x-show="tab === 'file'" class="space-y-4">
+                    <p class="text-xs text-slate-500 font-medium mb-4">Download your entire vocabulary database.</p>
+                    
+                    <a href="/data/export-csv" class="flex items-center justify-center space-x-3 w-full bg-emerald-100 text-emerald-800 font-bold py-4 rounded-xl shadow-sm hover:bg-emerald-200 transition transform active:scale-95">
+                        <span class="text-xl">📊</span>
+                        <span>Download as CSV (Full Data)</span>
+                    </a>
+                    
+                    <a href="/data/export-txt" class="flex items-center justify-center space-x-3 w-full bg-slate-100 text-slate-700 font-bold py-4 rounded-xl shadow-sm hover:bg-slate-200 transition transform active:scale-95">
+                        <span class="text-xl">📄</span>
+                        <span>Download as TXT (Words Only)</span>
+                    </a>
+                </div>
+
+                <div x-show="tab === 'text'" x-cloak class="space-y-4">
+                    <p class="text-xs text-slate-500 font-medium">Generate a raw text list of all your saved words.</p>
+                    
+                    <button hx-get="/data/export-raw" 
+                            hx-target="#raw-text-container" 
+                            class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-md hover:bg-slate-800 transition">
+                        Generate Word List
+                    </button>
+
+                    <div id="raw-text-container" class="mt-4 empty:hidden relative group">
+                        </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // A helper function for the "Copy" button that will be injected by HTMX
+    window.copyToClipboard = function(elementId) {
+        const textArea = document.getElementById(elementId);
+        textArea.select();
+        document.execCommand('copy');
+        
+        const btn = document.getElementById('copy-btn');
+        const originalText = btn.innerText;
+        btn.innerText = 'Copied! ✓';
+        btn.classList.add('bg-emerald-500', 'text-white');
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.classList.remove('bg-emerald-500', 'text-white');
+        }, 2000);
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto mt-8 relative">
+    <h1 class="text-3xl font-extrabold text-slate-900 mb-6 text-center">Dictionary Search</h1>
+    
+    <form id="search-form" 
+          hx-post="/api/search" 
+          hx-target="#search-results" 
+          hx-indicator="#loading-indicator" 
+          class="relative z-20"
+          onsubmit="document.getElementById('suggestions-container').innerHTML = ''; document.activeElement.blur();">
+          
+        <div class="flex items-center bg-white p-2 rounded-2xl shadow-md border border-slate-200 transition-all focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+            
+            <input type="text" 
+                   name="query" 
+                   id="search-input"
+                   placeholder="Search for a word (e.g. ubiquitous)..." 
+                   class="flex-grow text-xl p-4 rounded-xl focus:outline-none bg-transparent"
+                   autofocus
+                   autocomplete="off"
+                   hx-post="/api/suggest"
+                   hx-trigger="input changed delay:250ms"
+                   hx-target="#suggestions-container">
+            
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl shadow transition transform hover:-translate-y-0.5 ml-2 flex items-center space-x-2">
+                <span>Search</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </button>
+            
+            <div id="loading-indicator" class="htmx-indicator absolute right-40 top-1/2 transform -translate-y-1/2">
+                <svg class="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        </div>
+        
+        <div id="suggestions-container" class="relative"></div>
+    </form>
+
+    <div id="search-results" class="space-y-6 mt-8 relative z-10"></div>
+</div>
+
+<script>
+    // Dismiss the autocomplete dropdown if the user clicks anywhere outside the search bar
+    document.addEventListener('click', function(event) {
+        const container = document.getElementById('suggestions-container');
+        const form = document.getElementById('search-form');
+        if (!form.contains(event.target)) {
+            container.innerHTML = '';
+        }
+    });
+    
+    // Handle dictionary iframe resizing & internal dictionary cross-linking
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'resize') {
+            const iframe = document.getElementById('iframe-' + event.data.dict);
+            if (iframe) iframe.style.height = event.data.height + 'px';
+        } else if (event.data.type === 'search') {
+            const searchInput = document.getElementById('search-input');
+            searchInput.value = event.data.word;
+            document.getElementById('suggestions-container').innerHTML = ''; // Hide dropdown
+            htmx.trigger('#search-form', 'submit'); // Force the form to submit
+        }
+    });
+</script>
+{% endblock %}

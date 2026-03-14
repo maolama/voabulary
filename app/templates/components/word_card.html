@@ -1,0 +1,122 @@
+{% if query %}
+<div id="word-card-container">
+    
+    <script>
+        // 1. Instantly hide the search suggestions when a card loads
+        if (document.activeElement) { document.activeElement.blur(); }
+        // 2. Clear common suggestion box IDs just in case
+        const suggBox = document.getElementById('search-suggestions'); // adjust ID if needed
+        if (suggBox) suggBox.innerHTML = '';
+    </script>
+
+    <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <div>
+            <h2 class="text-3xl font-bold text-slate-800 capitalize">{{ query }}</h2>
+            <p class="text-slate-500 text-sm mt-1">Found in {{ results|length }} dictionaries</p>
+        </div>
+        
+        <div id="save-btn-container">
+            {% if is_saved %}
+                <button class="bg-emerald-500 text-white font-bold py-2 px-6 rounded-xl shadow cursor-default flex items-center space-x-2">
+                    <span>Saved</span> <span>✓</span>
+                </button>
+            {% else %}
+                <form hx-post="/api/save_word" 
+                      hx-target="#word-card-container" 
+                      hx-swap="outerHTML">
+                    <input type="hidden" name="word" value="{{ query }}">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition transform hover:scale-105 flex items-center space-x-2">
+                        <span>+ Add to Empire</span>
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if results %}
+        {% for result in results %}
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8" x-data="{ expanded: true }">
+            
+            <div class="px-6 flex justify-between items-center cursor-pointer hover:brightness-95 transition-all" 
+                style="background-color: {{ result.color }}; height: 80px; min-height: 80px; display: flex !important;"
+                @click="expanded = !expanded">
+                
+                <div class="flex items-center space-x-3">
+                    <svg class="w-6 h-6 text-slate-700 transition-transform duration-300" 
+                         :class="expanded ? 'rotate-180' : ''" 
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                    
+                    <div class="flex flex-col justify-center">
+                        <span class="text-sm font-bold text-slate-800 uppercase tracking-wider" style="display: block;">
+                            {{ result.name }}
+                        </span>
+                        <span class="text-[10px] text-slate-600 font-mono bg-white/20 px-1 rounded inline-block mt-1 w-max">
+                            DB ID: {{ word_id if word_id else 'None' }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center">
+                    {% if word_id %}
+                    <button 
+                        type="button"
+                        onclick="event.stopPropagation(); window.manualToggle('{{ result.name }}', this)"
+                        data-mode="full" 
+                        style="height: 40px; padding: 0 20px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: block !important; visibility: visible !important; background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; transition: all 0.2s;"
+                    >
+                        🎯 SHOW PINNED ONLY
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="px-6 py-4" x-show="expanded" x-transition>
+                <iframe src="/entry/{{ result.name }}/{{ result.safe_query }}?word_id={{ word_id }}" 
+                        style="width: 100%; border: none; min-height: 400px;" 
+                        id="iframe-{{ result.name }}"
+                        scrolling="no"></iframe>
+            </div>
+        </div>
+        {% endfor %} 
+    {% endif %}
+
+    <script>
+        window.manualToggle = function(dictName, btn) {
+            const iframe = document.getElementById('iframe-' + dictName);
+            const currentMode = btn.getAttribute('data-mode');
+            const newMode = (currentMode === 'full') ? 'pinned' : 'full';
+            
+            if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage({
+                    type: 'setFilterMode',
+                    mode: newMode
+                }, '*');
+                
+                btn.setAttribute('data-mode', newMode);
+                if (newMode === 'pinned') {
+                    btn.innerText = '🔍 SHOW FULL ENTRY';
+                    btn.style.backgroundColor = '#ffffff'; 
+                    btn.style.color = '#1e293b';         
+                    btn.style.borderColor = '#94a3b8';   
+                } else {
+                    btn.innerText = '🎯 SHOW PINNED ONLY';
+                    btn.style.backgroundColor = '#e0e7ff'; 
+                    btn.style.color = '#3730a3';         
+                    btn.style.borderColor = '#c7d2fe';   
+                }
+            }
+        };
+
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'resize') {
+                const iframe = document.getElementById('iframe-' + event.data.dict);
+                if (iframe) {
+                    iframe.style.height = (event.data.height + 50) + 'px';
+                }
+            }
+        });
+    </script>
+</div>
+{% endif %}
