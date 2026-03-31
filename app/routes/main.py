@@ -44,14 +44,6 @@ def dashboard():
 def search_page():
     return render_template('search.html')
 
-@bp.route('/review')
-def review_page():
-    today = datetime.utcnow().date()
-    # Get the most overdue word first
-    next_word = SavedWord.query.filter(SavedWord.next_review_date <= today).order_by(SavedWord.next_review_date).first()
-    return render_template('review.html', word=next_word)
-
-
 @bp.route('/entry/<dict_name>/<query>')
 def dictionary_entry(dict_name, query):
     handler = dict_service.active_dictionaries.get(dict_name)
@@ -194,25 +186,6 @@ def word_detail(word_id):
     # Fetch dictionary entries
     results = dict_service.search_word(word_obj.word)
     return render_template('word_detail.html', word=word_obj, results=results)
-
-@bp.route('/practice/scramble')
-def practice_scramble():
-    """A mini-game that scrambles a random saved word."""
-    words = SavedWord.query.all()
-    if not words:
-        return render_template('practice_scramble.html', word=None)
-    
-    target = random.choice(words)
-    word_str = target.word
-    chars = list(word_str)
-    random.shuffle(chars)
-    
-    # Ensure it is actually scrambled
-    while "".join(chars) == word_str and len(word_str) > 1:
-        random.shuffle(chars)
-        
-    scrambled = "".join(chars)
-    return render_template('practice_scramble.html', word=target, scrambled=scrambled)
 
 @bp.route('/settings')
 def settings_page():

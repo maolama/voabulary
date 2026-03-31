@@ -5,7 +5,6 @@ from ..services.tts import tts_manager
 from flask import Blueprint, request, render_template, jsonify, make_response
 from ..models import SavedWord, SavedSense
 from ..extensions import db, logger
-from ..services.srs import SRSService
 from app import dict_service # Import the global instance
 from ..models import ManualSynonym, ManualAntonym
 
@@ -71,20 +70,6 @@ def save_word():
 
 from flask import make_response # Make sure this is imported at the top!
 
-@bp.route('/submit_review/<int:word_id>', methods=['POST'])
-def submit_review(word_id):
-    word_obj = SavedWord.query.get_or_404(word_id)
-    user_input = request.form.get('typed_word', '').strip().lower()
-    
-    # Strict Active Recall Check
-    passed = (user_input == word_obj.word.lower())
-    SRSService.process_review(word_obj, passed)
-    
-    # Bulletproof HTMX Redirect
-    response = make_response("")
-    response.headers['HX-Redirect'] = '/review'
-    return response
-
 @bp.route('/suggest', methods=['POST'])
 def suggest_words():
     """Returns an HTML dropdown of autocomplete suggestions."""
@@ -96,30 +81,6 @@ def suggest_words():
         
     suggestions = dict_service.get_suggestions(prefix, limit=8)
     return render_template('components/suggestions.html', suggestions=suggestions)
-
-@bp.route('/submit_scramble/<int:word_id>', methods=['POST'])
-def submit_scramble(word_id):
-    """Evaluates the scramble game answer via HTMX."""
-    word_obj = SavedWord.query.get_or_404(word_id)
-    user_input = request.form.get('typed_word', '').strip().lower()
-    
-    if user_input == word_obj.word.lower():
-        # User won! Return a success message and a "Next Word" button that reloads the game
-        html = f"""
-        <div class="text-emerald-500 font-extrabold text-2xl mb-4 animate-bounce">Correct! 🎉</div>
-        <button hx-get="/practice/scramble" hx-target="body" hx-push-url="true" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:-translate-y-1">
-            Play Next Word
-        </button>
-        """
-        return html
-    else:
-        # User failed, let them try again
-        return """
-        <div class="text-rose-500 font-bold mb-4 animate-pulse">Not quite! Try again.</div>
-        <button onclick="document.getElementById('typed_word').value=''; document.getElementById('typed_word').focus(); document.getElementById('scramble-feedback').innerHTML='';" class="bg-slate-200 text-slate-800 font-bold py-2 px-6 rounded-xl hover:bg-slate-300">
-            Clear & Retry
-        </button>
-        """
 
 # ==========================================
 # DEVELOPMENT TOGGLE: Set to True for production, False for testing

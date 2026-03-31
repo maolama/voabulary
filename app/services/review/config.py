@@ -30,8 +30,6 @@ class DojoConfig:
         }
     }
 
-    # ... (Keep the rest of config.py exactly the same: get_filepath, get_config, save_config, reset_to_default) ...
-
     @staticmethod
     def get_filepath():
         # Saves in your root/data folder alongside user_data.db

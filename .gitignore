@@ -6,5 +6,8 @@ sample_jsons/*
 ffmpeg.exe
 app/__pycache__/*
 **/__pycache__/*
+app.log
+data/user_data.db
+data/dojo_config.json
 # But keep any .gitkeep files
 !**/.gitkeep
