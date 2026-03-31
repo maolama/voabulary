@@ -172,23 +172,37 @@ class LAAD3Dictionary(BaseDictionary):
     # 5. SEMANTIC LINKS
     # ==========================================
     def _get_synonyms(self, soup):
+        from bs4 import BeautifulSoup
         results = []
+        
         # 1. Inline Synonyms: <span class="synopp">SYN</span> document
         for syn in soup.find_all('span', class_='syn'):
-            clean = syn.get_text(strip=True).replace('SYN', '').strip()
-            if clean: results.append(clean)
+            clone = BeautifulSoup(str(syn), 'html.parser').find('span')
+            for hom in clone.find_all('span', class_='homnum'): hom.decompose()
+            clean = clone.get_text(strip=True).replace('SYN', '').strip()
+            if clean: 
+                # FIX: Split grouped synonyms like "rapidly/speedily"
+                results.extend([s.strip() for s in clean.split('/')])
             
         # 2. Thesaurus Popup entries: <span class="exp display">cancel</span>
         for exp in soup.find_all('span', class_='exp'):
-            results.append(exp.get_text(strip=True))
+            clone = BeautifulSoup(str(exp), 'html.parser').find('span')
+            for hom in clone.find_all('span', class_='homnum'): hom.decompose()
+            clean = clone.get_text(strip=True)
+            if clean: 
+                results.extend([s.strip() for s in clean.split('/')])
             
         return self._dedupe(results)
 
     def _get_antonyms(self, soup):
+        from bs4 import BeautifulSoup
         results = []
         for opp in soup.find_all('span', class_='opp'):
-            clean = opp.get_text(strip=True).replace('OPP', '').strip()
-            if clean: results.append(clean)
+            clone = BeautifulSoup(str(opp), 'html.parser').find('span')
+            for hom in clone.find_all('span', class_='homnum'): hom.decompose()
+            clean = clone.get_text(strip=True).replace('OPP', '').strip()
+            if clean: 
+                results.extend([s.strip() for s in clean.split('/')])
         return self._dedupe(results)
 
     def _get_collocations(self, soup):

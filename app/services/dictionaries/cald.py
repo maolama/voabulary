@@ -270,16 +270,21 @@ class CALD4Dictionary(BaseDictionary):
     # 5. SEMANTIC LINKS
     # ==========================================
     def _get_synonyms(self, soup):
-        # Links prefixed by ↑ usually indicate Thesaurus entries
-        results = []
-        for a in soup.find_all('a'):
-            href = a.get('href', '')
-            if href.startswith('entry://↑'):
-                results.append(a.get_text(strip=True).replace('↑', ''))
-        return list(set(results))
+        # FIX: CALD4's "synonyms" are actually SMART Thesaurus Categories (e.g. "Diets and dieting").
+        # We return an empty list to prevent polluting the SRS database with full sentences.
+        return []
 
     def _get_antonyms(self, soup):
-        return []
+        # CALD4 uses explicit bold "Opposite" tags, but they are rare.
+        results = []
+        for b in soup.find_all('b'):
+            if b.get_text(strip=True).lower() == 'opposite':
+                parent = b.find_parent()
+                if parent:
+                    urls = parent.find_all('span', class_='url')
+                    for u in urls:
+                        results.append(u.get_text(strip=True))
+        return list(set(results))
 
     def _get_collocations(self, soup):
         # Collocations have a green sharp/hash <font color="green"><b>♯</b></font> or 'lu.'

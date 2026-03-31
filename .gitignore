@@ -4,6 +4,7 @@ tts_models/*
 venv/*
 sample_jsons/*
 ffmpeg.exe
-
+app/__pycache__/*
+**/__pycache__/*
 # But keep any .gitkeep files
 !**/.gitkeep

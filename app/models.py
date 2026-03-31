@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from .extensions import db # Make sure this matches your app's structure
+from .extensions import db 
 
 # Many-to-Many association table for Words and Tags
 word_tags = db.Table('word_tags',
@@ -33,12 +33,39 @@ class SavedWord(db.Model):
     tags = db.relationship('Tag', secondary=word_tags, lazy='subquery',
         backref=db.backref('words', lazy=True))
         
-    # NEW: A word can have multiple pinned dictionary meanings. 
-    # cascade="all, delete-orphan" means if you delete the SavedWord, its saved HTML snippets vanish too!
     senses = db.relationship('SavedSense', backref='saved_word', cascade="all, delete-orphan", lazy=True)
+    # NEW: Semantic Relationships
+    manual_synonyms = db.relationship('ManualSynonym', backref='saved_word', cascade="all, delete-orphan", lazy=True)
+    manual_antonyms = db.relationship('ManualAntonym', backref='saved_word', cascade="all, delete-orphan", lazy=True)
+
+
+    # ==========================================
+    # NEW: ACTIVE DOJO & FSRS TRACKING
+    # ==========================================
+    # Advanced FSRS parameters for strict scheduling
+    stability = db.Column(db.Float, default=0.0) 
+    difficulty = db.Column(db.Float, default=0.0)
+    
+    # NEW: Memrise-style Mastery Level (1 to 9). 
+    # Levels 1-3 (Planting), 4-6 (Watering), 7-9 (Forging)
+    mastery_level = db.Column(db.Integer, default=1)
+    
+    # Crucial for triggering the new "Verb Conjugation" mode
+    primary_pos = db.Column(db.String(50), nullable=True) 
+    
+    # Skill tracking: Forces scaffolding if you keep failing dictation/spelling
+    spelling_streak = db.Column(db.Integer, default=0)
+    dictation_streak = db.Column(db.Integer, default=0)
+    
+    # Micro-SRS: Average milliseconds between keystrokes.
+    avg_typing_fluidity = db.Column(db.Float, nullable=True) 
+    
+    # Remembers the last challenge you faced so we can cycle through modes dynamically
+    last_mode_played = db.Column(db.String(50), nullable=True)
+
 
 # ==========================================
-# NEW: The Pinned Dictionary Snippets Model
+# The Pinned Dictionary Snippets Model
 # ==========================================
 class SavedSense(db.Model):
     __tablename__ = 'saved_senses'
@@ -47,11 +74,7 @@ class SavedSense(db.Model):
     word_id = db.Column(db.Integer, db.ForeignKey('saved_words.id'), nullable=False)
     
     dict_name = db.Column(db.String(100), nullable=False)
-    
-    # NEW: Store the specific HTML ID (e.g., "oald-verb-2") 
-    # so we can use it for CSS filtering later.
     sense_id = db.Column(db.String(100), nullable=True) 
-    
     html_content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -82,11 +105,24 @@ class UserProfile(db.Model):
     total_xp = db.Column(db.Integer, default=0)
     level = db.Column(db.Integer, default=1)
     
-    # NEW: Added streak tracking for gamification
     current_streak = db.Column(db.Integer, default=0)
     longest_streak = db.Column(db.Integer, default=0)
     last_study_date = db.Column(db.Date, nullable=True)
     
-    # Let's say 100 XP per level
     def update_level(self):
         self.level = (self.total_xp // 100) + 1
+
+# ==========================================
+# The Semantic Relationship Models
+# ==========================================
+class ManualSynonym(db.Model):
+    __tablename__ = 'manual_synonyms'
+    id = db.Column(db.Integer, primary_key=True)
+    word_id = db.Column(db.Integer, db.ForeignKey('saved_words.id'), nullable=False)
+    synonym = db.Column(db.String(100), nullable=False)
+
+class ManualAntonym(db.Model):
+    __tablename__ = 'manual_antonyms'
+    id = db.Column(db.Integer, primary_key=True)
+    word_id = db.Column(db.Integer, db.ForeignKey('saved_words.id'), nullable=False)
+    antonym = db.Column(db.String(100), nullable=False)

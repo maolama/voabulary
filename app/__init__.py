@@ -10,7 +10,6 @@ def create_app():
     app = Flask(__name__)
     
     # Configuration
-    # CORRECTED: Use __file__ instead of __dirname__
     current_dir = os.path.dirname(os.path.abspath(__file__))
     base_dir = os.path.dirname(current_dir) # Goes up one level to the root folder
     
@@ -31,13 +30,12 @@ def create_app():
     from .routes.main import bp as main_bp
     from .routes.api import bp as api_bp
     from .routes.data import bp as data_bp
-    from .routes.games import bp as games_bp # NEW
+    from .routes.review import bp as review_bp # NEW: Our Active Dojo API
 
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(data_bp, url_prefix='/data')
-    app.register_blueprint(games_bp, url_prefix='/games') # NEW
-    
+    app.register_blueprint(review_bp, url_prefix='/api/review') # NEW: Registered here!
     
     # Create database tables
     with app.app_context():

@@ -88,10 +88,8 @@ def render_import_result(success_count, failed_words):
 def import_text():
     """Handles manual text entry (Method 1)"""
     text = request.form.get('words_text', '')
-    # Replace commas with newlines to support both formats, then split
     raw_lines = text.replace(',', '\n').split('\n')
     
-    # Format for helper: (word, no_tags)
     items = [(line, "") for line in raw_lines]
     
     success_count, failed_words = process_imported_items(items)
@@ -113,7 +111,6 @@ def import_file():
         content = file.stream.read().decode("UTF8")
         
         if file.filename.lower().endswith('.csv'):
-            # CSV: Word in Col 1, Tags in Col 2
             stream = io.StringIO(content, newline=None)
             csv_input = csv.reader(stream)
             for row in csv_input:
@@ -121,7 +118,6 @@ def import_file():
                     tags = row[1] if len(row) > 1 else ""
                     items.append((row[0], tags))
         else:
-            # TXT: One word per line
             raw_lines = content.split('\n')
             items = [(line, "") for line in raw_lines]
             
@@ -168,23 +164,33 @@ def export_txt():
 
 @bp.route('/export-csv')
 def export_csv():
-    """Generates a downloadable .csv file with full SRS statistics and tags (Method 3)"""
+    """Generates a downloadable .csv file with full SRS and Dojo statistics"""
     words = SavedWord.query.order_by(SavedWord.word).all()
     
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Write Header
-    writer.writerow(['Word', 'Next Review', 'Interval', 'Repetitions', 'Ease Factor', 'Tags'])
+    # NEW: Added our Dojo stats to the header!
+    writer.writerow([
+        'Word', 'Next Review', 'Interval', 'Repetitions', 
+        'Ease Factor', 'Tags', 'Spelling Streak', 
+        'Dictation Streak', 'Avg Typing Ms'
+    ])
     
-    # Write Data
     for w in words:
         tags = ", ".join([t.name for t in w.tags])
         review_date = w.next_review_date.strftime('%Y-%m-%d') if w.next_review_date else ''
         ease = round(w.ease_factor, 2) if w.ease_factor else 2.5
-        repetitions = getattr(w, 'repetitions', getattr(w, 'lapses', 0)) # Fallback if column names differ
         
-        writer.writerow([w.word, review_date, w.interval, repetitions, ease, tags])
+        # safely grab our new columns just in case
+        s_streak = getattr(w, 'spelling_streak', 0)
+        d_streak = getattr(w, 'dictation_streak', 0)
+        typing_ms = round(getattr(w, 'avg_typing_fluidity', 0) or 0, 2)
+        
+        writer.writerow([
+            w.word, review_date, w.interval, w.repetitions, 
+            ease, tags, s_streak, d_streak, typing_ms
+        ])
         
     output.seek(0)
     return send_file(

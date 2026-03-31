@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto mt-10 mb-20" x-data="dojoEngine()">
+    
+    <div class="mb-8" x-show="state !== 'start' && state !== 'summary'" x-cloak x-transition>
+        <div class="flex justify-between items-end mb-2">
+            <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Active Dojo</h1>
+            <span class="text-sm font-bold text-slate-500" x-text="`${currentIndex + 1} / ${queue.length}`"></span>
+        </div>
+        <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+            <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500 ease-out" 
+                 :style="`width: ${((currentIndex) / queue.length) * 100}%`"></div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden relative min-h-[400px] flex flex-col transition-all duration-300"
+         :class="{'ring-4 ring-rose-500 bg-rose-50': feedback === 'error', 'ring-4 ring-emerald-500': feedback === 'success'}">
+        
+        <div x-show="state === 'start'" x-transition class="flex flex-col items-center justify-center p-12 text-center h-full my-auto">
+            <div class="text-6xl mb-6">🥋</div>
+            <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Ready your mind.</h2>
+            <p class="text-slate-500 mb-8" x-text="`You have ${totalDue} words waiting in the queue.`"></p>
+            
+            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8 w-full max-w-sm">
+                <label class="block text-sm font-bold text-slate-700 uppercase tracking-widest mb-3">Words to Practice Today</label>
+                <div class="flex items-center justify-center space-x-4">
+                    <button @click="if(sessionLimit > 1) sessionLimit--" class="w-10 h-10 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 font-black text-xl flex items-center justify-center transition">-</button>
+                    <input type="number" x-model="sessionLimit" min="1" :max="totalDue" class="w-20 text-center text-2xl font-black text-indigo-600 bg-transparent border-none focus:ring-0 p-0">
+                    <button @click="if(sessionLimit < totalDue) sessionLimit++" class="w-10 h-10 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 font-black text-xl flex items-center justify-center transition">+</button>
+                </div>
+            </div>
+            
+            <button @click="startSession()" :disabled="isLoading || totalDue === 0" 
+                    class="bg-slate-900 text-white font-bold py-4 px-10 rounded-2xl shadow-lg hover:bg-slate-800 hover:scale-105 transition-all disabled:opacity-50 flex items-center space-x-3">
+                <span x-text="isLoading ? 'Loading Queue...' : 'Begin Training'"></span>
+                <svg x-show="isLoading" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </button>
+        </div>
+
+        <div x-show="state === 'playing'" x-transition class="flex flex-col flex-grow p-8">
+            
+            <div class="flex justify-between items-center mb-6">
+                <span class="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-wider rounded-lg" x-text="formatMode(currentQuestion.mode)"></span>
+                <button @click="playAudio()" class="p-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-full transition-colors focus:outline-none">
+                    🔊 Listen
+                </button>
+            </div>
+
+            <div class="flex-grow flex flex-col justify-center mb-4">
+                
+                <template x-if="currentQuestion.display_text">
+                    <div class="text-4xl font-mono font-bold text-center text-slate-800 tracking-widest mb-6" 
+                         :class="{'text-2xl': currentQuestion.mode === 'audio_to_def'}"
+                         x-text="currentQuestion.display_text"></div>
+                </template>
+
+                <template x-if="currentQuestion.context_html">
+                    <div class="text-lg text-slate-700 leading-relaxed p-6 bg-slate-50 rounded-2xl border border-slate-200 mb-6" x-html="currentQuestion.context_html"></div>
+                </template>
+
+                <template x-if="currentQuestion.options">
+                    <div class="grid gap-3 mb-4" 
+                         :class="['word_to_def', 'audio_to_def', 'collocation_match'].includes(currentQuestion.mode) ? 'grid-cols-1' : 'grid-cols-2'">
+                        <template x-for="opt in currentQuestion.options" :key="opt">
+                            <button @click="selectOption(opt)" 
+                                    class="p-4 border-2 border-slate-200 rounded-xl font-bold text-slate-700 hover:border-indigo-500 hover:bg-indigo-50 transition-colors text-left"
+                                    :class="{'text-lg': !['word_to_def', 'audio_to_def'].includes(currentQuestion.mode), 'text-md leading-snug': ['word_to_def', 'audio_to_def'].includes(currentQuestion.mode), 'text-center text-xl': currentQuestion.mode === 'true_false_sort'}"
+                                    x-text="opt"></button>
+                        </template>
+                    </div>
+                </template>
+
+            </div>
+
+            <div class="relative mt-auto" x-show="!['word_to_def', 'def_to_word', 'audio_to_def', 'true_false_sort', 'collocation_match', 'typo_trap'].includes(currentQuestion.mode)">
+                <form @submit.prevent="submitAnswer()">
+                    <input x-ref="answerInput" 
+                           :type="currentQuestion.mode === 'blindfolded' ? 'password' : 'text'" 
+                           x-model="userInput" 
+                           class="w-full bg-slate-100 border-2 border-slate-200 text-slate-900 text-2xl font-bold rounded-2xl p-6 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors text-center shadow-inner placeholder-slate-400"
+                           placeholder="Type the answer..." 
+                           autocomplete="off" 
+                           autocorrect="off" 
+                           spellcheck="false">
+                </form>
+                <p class="text-center text-xs text-slate-400 mt-4 font-medium uppercase tracking-widest">Press Enter to submit</p>
+            </div>
+        </div>
+
+        <div x-show="state === 'memory_flash'" x-transition.opacity.duration.300ms class="absolute inset-0 bg-rose-600 text-white flex flex-col items-center justify-center p-8 z-50">
+            <div class="text-6xl mb-6 animate-bounce">❌</div>
+            <h2 class="text-3xl font-black mb-2 uppercase tracking-widest text-rose-100">Incorrect</h2>
+            
+            <div class="mt-8 text-center bg-black/20 p-6 rounded-2xl w-full max-w-lg">
+                <p class="text-rose-200 text-sm font-bold uppercase mb-1">Expected</p>
+                <p class="text-2xl font-mono font-bold tracking-tight mb-6" x-text="currentQuestion.target_answer"></p>
+                
+                <p class="text-rose-200 text-sm font-bold uppercase mb-1">You Answered</p>
+                <p class="text-xl font-mono text-rose-300 line-through" x-text="lastTyped"></p>
+            </div>
+            
+            <p class="mt-8 font-bold text-rose-100 animate-pulse">Memorize it. Disappearing in <span x-text="flashCountdown"></span>...</p>
+        </div>
+
+        <div x-show="state === 'success'" x-transition class="flex flex-col flex-grow p-8 bg-emerald-50">
+            <div class="text-center mb-8">
+                <div class="text-5xl mb-4">✨</div>
+                <h2 class="text-3xl font-black text-emerald-800 capitalize" x-text="currentQuestion.target_word"></h2>
+                <p class="text-emerald-600 font-bold mt-2" x-text="`Interval increased to ${newInterval} days`"></p>
+                <p x-show="slowPenalty" class="text-amber-600 text-sm font-bold mt-1">⚠️ Slow typing penalty applied.</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 mt-auto">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">Shadowing Sandbox</p>
+                <div class="flex justify-center space-x-3">
+                    <template x-if="currentQuestion.native_us">
+                        <button @click="playAudio('US')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-5 rounded-xl transition flex items-center shadow-sm">
+                            🇺🇸 US
+                        </button>
+                    </template>
+                    <template x-if="currentQuestion.native_uk">
+                        <button @click="playAudio('UK')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-5 rounded-xl transition flex items-center shadow-sm">
+                            🇬🇧 UK
+                        </button>
+                    </template>
+                    <template x-if="!currentQuestion.native_us && !currentQuestion.native_uk">
+                        <button @click="playAudio()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-5 rounded-xl transition flex items-center shadow-sm">
+                            🔊 TTS
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <button @click="nextQuestion()" x-ref="nextBtn" class="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-emerald-700 hover:-translate-y-1 transition-all mt-6">
+                Continue →
+            </button>
+        </div>
+
+        <div x-show="state === 'summary'" x-transition class="flex flex-col items-center justify-center p-12 text-center h-full my-auto">
+            <div class="text-6xl mb-6">🏆</div>
+            <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Dojo Cleared</h2>
+            <p class="text-slate-500 mb-8">Your empire grows stronger.</p>
+            
+            <a href="/" class="bg-slate-900 text-white font-bold py-4 px-10 rounded-2xl shadow-lg hover:bg-slate-800 transition-all">
+                Return to Base
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function dojoEngine() {
+    return {
+        state: 'start',
+        isLoading: false,
+        totalDue: 0,
+        sessionLimit: 7,
+        queue: [],
+        currentIndex: 0,
+        
+        currentQuestion: {},
+        userInput: '',
+        lastTyped: '',
+        startTime: 0,
+        
+        feedback: null,
+        flashCountdown: 3,
+        newInterval: 0,
+        slowPenalty: false,
+
+        init() {
+            fetch('/api/review/session/info')
+                .then(res => res.json())
+                .then(data => { 
+                    this.totalDue = data.data.total_due; 
+                    this.sessionLimit = Math.min(data.data.default_limit, Math.max(1, this.totalDue));
+                });
+        },
+
+        formatMode(modeStr) {
+            if (!modeStr) return '';
+            return modeStr.replace(/_/g, ' ');
+        },
+
+        async startSession() {
+            this.isLoading = true;
+            try {
+                const res = await fetch(`/api/review/session?limit=${this.sessionLimit}`);
+                const data = await res.json();
+                
+                this.queue = data.data.session_queue;
+                
+                if (this.queue.length === 0) {
+                    this.state = 'summary';
+                    return;
+                }
+                
+                this.currentIndex = 0;
+                await this.loadQuestion();
+            } catch (err) {
+                console.error("Failed to load session", err);
+                alert("Failed to load the training queue.");
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async loadQuestion() {
+            this.state = 'loading';
+            this.feedback = null;
+            this.userInput = '';
+            
+            const item = this.queue[this.currentIndex];
+            
+            try {
+                const res = await fetch(`/api/review/question/${item.word_id}?mode=${item.mode}&encounter=${item.encounter_index || 0}`);
+                const data = await res.json();
+                this.currentQuestion = data.data;
+                
+                this.state = 'playing';
+                this.startTime = Date.now();
+                
+                if (this.currentQuestion.mode.includes('dictation') || this.currentQuestion.mode === 'blindfolded' || this.currentQuestion.mode === 'audio_to_def') {
+                    setTimeout(() => this.playAudio(), 300);
+                }
+                
+                setTimeout(() => { if (this.$refs.answerInput) this.$refs.answerInput.focus(); }, 100);
+                
+            } catch (err) {
+                console.error(err);
+                alert("Failed to load the question data.");
+            }
+        },
+
+        playAudio(explicitRegion = null) {
+            let targetUrl = null;
+            
+            if (explicitRegion === 'UK' && this.currentQuestion.native_uk) {
+                targetUrl = this.currentQuestion.native_uk;
+            } else if (explicitRegion === 'US' && this.currentQuestion.native_us) {
+                targetUrl = this.currentQuestion.native_us;
+            } else {
+                const available = [];
+                if (this.currentQuestion.native_us) available.push(this.currentQuestion.native_us);
+                if (this.currentQuestion.native_uk) available.push(this.currentQuestion.native_uk);
+                
+                if (available.length > 0) {
+                    targetUrl = available[Math.floor(Math.random() * available.length)];
+                }
+            }
+            
+            if (targetUrl) {
+                const nativeAudio = new Audio(targetUrl);
+                nativeAudio.play().catch(e => {
+                    console.warn("Native audio failed, falling back to TTS", e);
+                    window.playTTSAudio(this.currentQuestion.target_word);
+                });
+            } else {
+                window.playTTSAudio(this.currentQuestion.target_word);
+            }
+        },
+
+        // NEW: Handles clicking an option
+        selectOption(opt) {
+            this.userInput = opt;
+            // Instant submit for pure multiple choice modes!
+            const instantSubmitModes = ['word_to_def', 'def_to_word', 'audio_to_def', 'true_false_sort', 'collocation_match', 'typo_trap'];
+            
+            if (instantSubmitModes.includes(this.currentQuestion.mode)) {
+                this.submitAnswer();
+            } else {
+                if (this.$refs.answerInput) this.$refs.answerInput.focus();
+            }
+        },
+
+        async submitAnswer() {
+            if (!this.userInput.trim()) return;
+            
+            const typingTimeMs = Date.now() - this.startTime;
+            
+            // THE FIX: Check against target_answer (which could be a full sentence now!)
+            const expectedAnswer = this.currentQuestion.target_answer || this.currentQuestion.target_word;
+            const isCorrect = this.userInput.trim().toLowerCase() === expectedAnswer.toLowerCase();
+            
+            this.lastTyped = this.userInput.trim();
+            const currentItem = this.queue[this.currentIndex];
+
+            // Submit to Backend Grader
+            fetch('/api/review/grade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    word_id: this.currentQuestion.word_id,
+                    mode: this.currentQuestion.mode,
+                    is_correct: isCorrect,
+                    typing_time_ms: typingTimeMs,
+                    is_last_encounter: currentItem.is_last_encounter 
+                })
+            }).then(res => res.json()).then(data => {
+                if(data.status === 'success') {
+                    this.newInterval = data.data.new_interval;
+                    this.slowPenalty = data.data.slow_penalty_applied;
+                }
+            });
+
+            if (isCorrect) {
+                this.feedback = 'success';
+                this.state = 'success';
+                setTimeout(() => { if (this.$refs.nextBtn) this.$refs.nextBtn.focus(); }, 100);
+            } else {
+                this.feedback = 'error';
+                this.triggerMemoryFlash();
+            }
+        },
+
+        triggerMemoryFlash() {
+            this.state = 'memory_flash';
+            // Give users slightly longer (4s) to read incorrect long definitions
+            this.flashCountdown = ['word_to_def', 'collocation_match', 'audio_to_def'].includes(this.currentQuestion.mode) ? 4 : 3;
+            
+            this.queue.push(this.queue[this.currentIndex]);
+            
+            const interval = setInterval(() => {
+                this.flashCountdown--;
+                if (this.flashCountdown <= 0) {
+                    clearInterval(interval);
+                    this.state = 'playing';
+                    this.feedback = null;
+                    this.userInput = '';
+                    this.startTime = Date.now();
+                    setTimeout(() => { if (this.$refs.answerInput) this.$refs.answerInput.focus(); }, 100);
+                }
+            }, 1000);
+        },
+
+        nextQuestion() {
+            this.currentIndex++;
+            if (this.currentIndex >= this.queue.length) {
+                this.state = 'summary';
+            } else {
+                this.loadQuestion();
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

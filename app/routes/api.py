@@ -7,6 +7,7 @@ from ..models import SavedWord, SavedSense
 from ..extensions import db, logger
 from ..services.srs import SRSService
 from app import dict_service # Import the global instance
+from ..models import ManualSynonym, ManualAntonym
 
 bp = Blueprint('api', __name__)
 
@@ -221,6 +222,61 @@ def update_dict_config():
     data = request.json
     try:
         dict_service.update_config(data)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+
+@bp.route('/word/<int:word_id>/relations', methods=['GET'])
+def get_relations(word_id):
+    word_obj = SavedWord.query.get_or_404(word_id)
+    
+    # 1. Get Auto-Extracted
+    auto_rels = dict_service.get_word_relations(word_obj.word)
+    
+    # 2. Get Manual DB
+    manual_syns = [{"id": s.id, "word": s.synonym} for s in word_obj.manual_synonyms]
+    manual_ants = [{"id": a.id, "word": a.antonym} for a in word_obj.manual_antonyms]
+    
+    return jsonify({
+        "status": "success",
+        "data": {
+            "auto_synonyms": auto_rels['synonyms'],
+            "auto_antonyms": auto_rels['antonyms'],
+            "manual_synonyms": manual_syns,
+            "manual_antonyms": manual_ants
+        }
+    })
+
+@bp.route('/word/<int:word_id>/relations', methods=['POST'])
+def add_relation(word_id):
+    data = request.json
+    rel_type = data.get('type') # 'synonym' or 'antonym'
+    word_val = data.get('word', '').strip().lower()
+    
+    if not word_val: return jsonify({"status": "error"}), 400
+    
+    try:
+        if rel_type == 'synonym':
+            new_rel = ManualSynonym(word_id=word_id, synonym=word_val)
+        else:
+            new_rel = ManualAntonym(word_id=word_id, antonym=word_val)
+            
+        db.session.add(new_rel)
+        db.session.commit()
+        return jsonify({"status": "success", "id": new_rel.id, "word": word_val})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@bp.route('/word/relations/<int:rel_id>', methods=['DELETE'])
+def delete_relation(rel_id):
+    rel_type = request.args.get('type')
+    try:
+        obj = ManualSynonym.query.get(rel_id) if rel_type == 'synonym' else ManualAntonym.query.get(rel_id)
+        if obj:
+            db.session.delete(obj)
+            db.session.commit()
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

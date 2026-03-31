@@ -257,6 +257,7 @@ class OALD9Dictionary(BaseDictionary):
     # ==========================================
     def _get_synonyms(self, soup):
         results = []
+        
         # 1. Inline Synonyms
         for syn_block in soup.find_all('span', class_='xr-gs'):
             pref = syn_block.find('span', class_='prefix')
@@ -264,13 +265,19 @@ class OALD9Dictionary(BaseDictionary):
                 xh = syn_block.find('span', class_='xh')
                 if xh: results.append(xh.get_text(strip=True))
                 
-        # 2. Synonym / Wordfinder Popups
-        for box in soup.find_all('span', attrs={'otitle': ['Synonyms', 'Wordfinder']}):
-            for word in box.find_all(['li', 'span'], class_=['li', 'xh', 'eb']):
-                clean_word = word.get_text(strip=True)
-                if clean_word and clean_word not in results: results.append(clean_word)
+        # 2. Synonym Popups (OALD stores them inside an 'inline' span)
+        for box in soup.find_all('span', attrs={'otitle': 'Synonyms'}):
+            inline_block = box.find('span', class_='inline')
+            if inline_block:
+                for li in inline_block.find_all(['span', 'li'], class_='li'):
+                    results.append(li.get_text(strip=True))
+
+        # 3. Wordfinder Popups
+        for box in soup.find_all('span', attrs={'otitle': 'Wordfinder'}):
+            for xh in box.find_all('span', class_='xh'):
+                results.append(xh.get_text(strip=True))
                 
-        return results
+        return list(set(results))
 
     def _get_antonyms(self, soup):
         results = []
@@ -279,7 +286,7 @@ class OALD9Dictionary(BaseDictionary):
             if pref and 'opposite' in pref.get_text().lower():
                 xh = opp_block.find('span', class_='xh')
                 if xh: results.append(xh.get_text(strip=True))
-        return results
+        return list(set(results))
 
     def _get_collocations(self, soup):
         results = []

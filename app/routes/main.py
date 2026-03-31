@@ -255,3 +255,8 @@ def transcode_spx_to_mp3(spx_data):
     except FileNotFoundError:
         print("ERROR: ffmpeg.exe was not found! Please put it in the project folder.")
         return None
+    
+@bp.route('/dojo')
+def active_dojo():
+    """Renders the Active Learning Dojo interface."""
+    return render_template('review/dojo.html')
