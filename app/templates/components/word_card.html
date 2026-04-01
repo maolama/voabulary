@@ -11,7 +11,22 @@
 
     <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
         <div>
-            <h2 class="text-3xl font-bold text-slate-800 capitalize">{{ query }}</h2>
+            <div class="flex items-center gap-4">
+                <h2 class="text-3xl font-bold text-slate-800 capitalize">{{ query }}</h2>
+                
+                {% if is_saved and word %}
+                <div class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-emerald-50 text-sm font-bold text-emerald-700 border border-emerald-200 shadow-sm" title="Mastery Level: {{ word.mastery_level }}">
+                    {% if word.growth_stage == 'seedling' %}
+                        🌱 Seedling (Level {{ word.mastery_level }})
+                    {% elif word.growth_stage == 'growing' %}
+                        🌿 Growing (Level {{ word.mastery_level }})
+                    {% else %}
+                        🌸 Blooming (Level {{ word.mastery_level }})
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            
             <p class="text-slate-500 text-sm mt-1">Found in {{ results|length }} dictionaries</p>
         </div>
         

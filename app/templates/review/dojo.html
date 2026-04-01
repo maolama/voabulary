@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-3xl mx-auto mt-10 mb-20" x-data="dojoEngine()">
+<div class="max-w-4xl mx-auto mt-10 mb-20" x-data="dojoEngine()">
     
     <div class="mb-8" x-show="state !== 'start' && state !== 'summary'" x-cloak x-transition>
         <div class="flex justify-between items-end mb-2">
@@ -77,6 +77,7 @@
                     <input x-ref="answerInput" 
                            :type="currentQuestion.mode === 'blindfolded' ? 'password' : 'text'" 
                            x-model="userInput" 
+                           @input="if(!isTyping && userInput.length > 0) { startTime = Date.now(); isTyping = true; }"
                            class="w-full bg-slate-100 border-2 border-slate-200 text-slate-900 text-2xl font-bold rounded-2xl p-6 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors text-center shadow-inner placeholder-slate-400"
                            placeholder="Type the answer..." 
                            autocomplete="off" 
@@ -93,7 +94,7 @@
             
             <div class="mt-8 text-center bg-black/20 p-6 rounded-2xl w-full max-w-lg">
                 <p class="text-rose-200 text-sm font-bold uppercase mb-1">Expected</p>
-                <p class="text-2xl font-mono font-bold tracking-tight mb-6" x-text="currentQuestion.target_answer"></p>
+                <p class="text-2xl font-mono font-bold tracking-tight mb-6" x-text="currentQuestion.target_answer || currentQuestion.target_word"></p>
                 
                 <p class="text-rose-200 text-sm font-bold uppercase mb-1">You Answered</p>
                 <p class="text-xl font-mono text-rose-300 line-through" x-text="lastTyped"></p>
@@ -107,7 +108,6 @@
                 <div class="text-5xl mb-4">✨</div>
                 <h2 class="text-3xl font-black text-emerald-800 capitalize" x-text="currentQuestion.target_word"></h2>
                 <p class="text-emerald-600 font-bold mt-2" x-text="`Interval increased to ${newInterval} days`"></p>
-                <p x-show="slowPenalty" class="text-amber-600 text-sm font-bold mt-1">⚠️ Slow typing penalty applied.</p>
             </div>
 
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 mt-auto">
@@ -136,12 +136,50 @@
             </button>
         </div>
 
-        <div x-show="state === 'summary'" x-transition class="flex flex-col items-center justify-center p-12 text-center h-full my-auto">
-            <div class="text-6xl mb-6">🏆</div>
-            <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Dojo Cleared</h2>
-            <p class="text-slate-500 mb-8">Your empire grows stronger.</p>
+        <div x-show="state === 'summary'" x-transition class="flex flex-col p-10 h-full overflow-y-auto my-auto">
+            <div class="text-center mb-8">
+                <div class="text-6xl mb-4">🏆</div>
+                <h2 class="text-3xl font-extrabold text-slate-900 mb-2">Dojo Cleared</h2>
+                <p class="text-slate-500">Your empire grows stronger.</p>
+            </div>
             
-            <a href="/" class="bg-slate-900 text-white font-bold py-4 px-10 rounded-2xl shadow-lg hover:bg-slate-800 transition-all">
+            <template x-if="Object.keys(typingStats).length > 0">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+                    <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-700 uppercase tracking-wider text-sm">Typing Speed Analysis</h3>
+                        <span class="text-xs text-slate-400 font-medium">Est = 600ms/char</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-500 text-xs uppercase">
+                                    <th class="py-3 px-4 font-bold">Word</th>
+                                    <th class="py-3 px-4 font-bold text-center">Avg Actual</th>
+                                    <th class="py-3 px-4 font-bold text-center">Expected</th>
+                                    <th class="py-3 px-4 font-bold text-center">Min / Max</th>
+                                    <th class="py-3 px-4 font-bold text-right">Result</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="stat in getSummaryStats()" :key="stat.word">
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="py-3 px-4 font-bold text-slate-800" x-text="stat.word"></td>
+                                        <td class="py-3 px-4 text-center font-mono text-slate-600" x-text="stat.avg + 's'"></td>
+                                        <td class="py-3 px-4 text-center font-mono text-slate-400" x-text="stat.expected + 's'"></td>
+                                        <td class="py-3 px-4 text-center font-mono text-slate-400 text-xs" x-text="`${stat.min}s / ${stat.max}s`"></td>
+                                        <td class="py-3 px-4 text-right font-black font-mono"
+                                            :class="stat.isSlow ? 'text-rose-500' : 'text-emerald-500'"
+                                            x-text="(stat.isSlow ? '+' : '') + stat.diff + 's'">
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+
+            <a href="/" class="mt-auto block text-center bg-slate-900 text-white font-bold py-4 px-10 rounded-2xl shadow-lg hover:bg-slate-800 transition-all">
                 Return to Base
             </a>
         </div>
@@ -162,12 +200,15 @@ function dojoEngine() {
         currentQuestion: {},
         userInput: '',
         lastTyped: '',
+        
+        // --- NEW TIMING VARIABLES ---
         startTime: 0,
+        isTyping: false,
+        typingStats: {}, // Stores per-word timing arrays
         
         feedback: null,
         flashCountdown: 3,
         newInterval: 0,
-        slowPenalty: false,
 
         init() {
             fetch('/api/review/session/info')
@@ -185,6 +226,7 @@ function dojoEngine() {
 
         async startSession() {
             this.isLoading = true;
+            this.typingStats = {}; // Clear stats for new session
             try {
                 const res = await fetch(`/api/review/session?limit=${this.sessionLimit}`);
                 const data = await res.json();
@@ -211,6 +253,10 @@ function dojoEngine() {
             this.feedback = null;
             this.userInput = '';
             
+            // Reset typing states
+            this.isTyping = false;
+            this.startTime = 0;
+            
             const item = this.queue[this.currentIndex];
             
             try {
@@ -219,7 +265,6 @@ function dojoEngine() {
                 this.currentQuestion = data.data;
                 
                 this.state = 'playing';
-                this.startTime = Date.now();
                 
                 if (this.currentQuestion.mode.includes('dictation') || this.currentQuestion.mode === 'blindfolded' || this.currentQuestion.mode === 'audio_to_def') {
                     setTimeout(() => this.playAudio(), 300);
@@ -261,10 +306,8 @@ function dojoEngine() {
             }
         },
 
-        // NEW: Handles clicking an option
         selectOption(opt) {
             this.userInput = opt;
-            // Instant submit for pure multiple choice modes!
             const instantSubmitModes = ['word_to_def', 'def_to_word', 'audio_to_def', 'true_false_sort', 'collocation_match', 'typo_trap'];
             
             if (instantSubmitModes.includes(this.currentQuestion.mode)) {
@@ -277,11 +320,25 @@ function dojoEngine() {
         async submitAnswer() {
             if (!this.userInput.trim()) return;
             
-            const typingTimeMs = Date.now() - this.startTime;
-            
-            // THE FIX: Check against target_answer (which could be a full sentence now!)
             const expectedAnswer = this.currentQuestion.target_answer || this.currentQuestion.target_word;
             const isCorrect = this.userInput.trim().toLowerCase() === expectedAnswer.toLowerCase();
+            
+            // --- TYPING ANALYTICS LOGIC ---
+            let finalTypingTimeMs = null;
+            if (this.isTyping && this.startTime > 0) {
+                finalTypingTimeMs = Date.now() - this.startTime;
+                
+                // Track stats only for the word being typed
+                if (!this.typingStats[expectedAnswer]) {
+                    // 600ms per char + 500ms base cognitive load (since 1st key is already pressed)
+                    this.typingStats[expectedAnswer] = {
+                        word: expectedAnswer,
+                        times: [],
+                        expected: (expectedAnswer.length * 600) + 500
+                    };
+                }
+                this.typingStats[expectedAnswer].times.push(finalTypingTimeMs);
+            }
             
             this.lastTyped = this.userInput.trim();
             const currentItem = this.queue[this.currentIndex];
@@ -294,13 +351,12 @@ function dojoEngine() {
                     word_id: this.currentQuestion.word_id,
                     mode: this.currentQuestion.mode,
                     is_correct: isCorrect,
-                    typing_time_ms: typingTimeMs,
+                    typing_time_ms: finalTypingTimeMs, // Still sent for DB stats, but FSRS ignores if toggle is off
                     is_last_encounter: currentItem.is_last_encounter 
                 })
             }).then(res => res.json()).then(data => {
                 if(data.status === 'success') {
                     this.newInterval = data.data.new_interval;
-                    this.slowPenalty = data.data.slow_penalty_applied;
                 }
             });
 
@@ -316,7 +372,6 @@ function dojoEngine() {
 
         triggerMemoryFlash() {
             this.state = 'memory_flash';
-            // Give users slightly longer (4s) to read incorrect long definitions
             this.flashCountdown = ['word_to_def', 'collocation_match', 'audio_to_def'].includes(this.currentQuestion.mode) ? 4 : 3;
             
             this.queue.push(this.queue[this.currentIndex]);
@@ -328,7 +383,11 @@ function dojoEngine() {
                     this.state = 'playing';
                     this.feedback = null;
                     this.userInput = '';
-                    this.startTime = Date.now();
+                    
+                    // Reset timer so next attempt gets a fresh start
+                    this.isTyping = false;
+                    this.startTime = 0;
+                    
                     setTimeout(() => { if (this.$refs.answerInput) this.$refs.answerInput.focus(); }, 100);
                 }
             }, 1000);
@@ -341,6 +400,31 @@ function dojoEngine() {
             } else {
                 this.loadQuestion();
             }
+        },
+        
+        // Processes the raw timing arrays into the final display format
+        getSummaryStats() {
+            const result = [];
+            for (const key in this.typingStats) {
+                const stat = this.typingStats[key];
+                if (stat.times.length === 0) continue;
+                
+                const avgMs = stat.times.reduce((a, b) => a + b, 0) / stat.times.length;
+                const minMs = Math.min(...stat.times);
+                const maxMs = Math.max(...stat.times);
+                const diffMs = avgMs - stat.expected;
+                
+                result.push({
+                    word: stat.word,
+                    avg: (avgMs / 1000).toFixed(1),
+                    min: (minMs / 1000).toFixed(1),
+                    max: (maxMs / 1000).toFixed(1),
+                    expected: (stat.expected / 1000).toFixed(1),
+                    diff: (diffMs / 1000).toFixed(1),
+                    isSlow: diffMs > 0
+                });
+            }
+            return result;
         }
     }
 }

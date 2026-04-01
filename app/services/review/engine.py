@@ -2,6 +2,7 @@ import random
 from datetime import date
 from ...models import SavedWord
 from .config import DojoConfig
+from ...models import SavedWord, UserProfile, StudyActivity
 
 class DojoEngine:
     """Handles the custom tiered queue generation for a review session."""
@@ -18,8 +19,39 @@ class DojoEngine:
 
     @staticmethod
     def get_due_words():
+        """Returns due words, but returns an empty list if on Vacation."""
+        profile = UserProfile.query.first()
+        if profile and profile.vacation_mode:
+            return [] # Time is frozen in the Greenhouse
+            
         today = date.today()
         return SavedWord.query.filter(SavedWord.next_review_date <= today).order_by(SavedWord.next_review_date).all()
+    
+    @staticmethod
+    def get_remaining_daily_capacity() -> int:
+        """
+        Calculates how much water is left in the 'Watering Can' for today.
+        Strictly counts UNIQUE words completed, regardless of how many practices each word took.
+        """
+        from datetime import date, datetime
+        from ...models import UserProfile, SavedWord
+        
+        profile = UserProfile.query.first()
+        limit = profile.daily_review_limit if profile and profile.daily_review_limit is not None else 50
+        
+        today = date.today()
+        midnight = datetime.combine(today, datetime.min.time())
+        
+        # A word is "watered" today if we reviewed it today AND its next date was pushed to the future.
+        # This guarantees it ignores half-finished words or intermediate practices!
+        completed_words_today = SavedWord.query.filter(
+            SavedWord.last_reviewed_at >= midnight,
+            SavedWord.next_review_date > today
+        ).count()
+        
+        remaining = limit - completed_words_today
+        return max(0, remaining)
+    
 
     @staticmethod
     def build_playlist(word: SavedWord, config_data: dict) -> list:
@@ -47,18 +79,39 @@ class DojoEngine:
     @staticmethod
     def generate_session(max_words: int) -> dict:
         """Builds the session by intelligently interleaving progressive word queues."""
+        import random
+        from .config import DojoConfig
+        
         config_data = DojoConfig.get_config()
+        
+        # Calculate remaining 'Watering Can' capacity for today (now based strictly on UNIQUE words)
+        remaining_capacity = DojoEngine.get_remaining_daily_capacity()
+        
+        # The actual size is the smallest of: words due, user request, or daily limit
+        actual_session_size = min(max_words, remaining_capacity)
+        
         due_words = DojoEngine.get_due_words()
-        session_words = due_words[:max_words]
+        total_due_unlimited = len(due_words)
+
+        # If the can is empty, return early so the UI can lock the session
+        if actual_session_size <= 0 and max_words > 0:
+             return {
+                'total_due': total_due_unlimited,
+                'session_queue': [],
+                'watering_can_empty': True
+             }
+
+        # Select words based on the safe, calculated limit
+        session_words = due_words[:actual_session_size]
         
         # 1. Build and sort individual queues for each word
         word_queues = {}
         for w in session_words:
             raw_playlist = DojoEngine.build_playlist(w, config_data)
             
-            # Shuffle first: This ensures randomness WITHIN the same difficulty tier
+            # Shuffle first: ensures randomness WITHIN the same difficulty tier
             random.shuffle(raw_playlist)
-            # Sort second: Python's stable sort ensures Easy -> Medium -> Hard order is strictly enforced
+            # Sort second: Python's stable sort ensures Easy -> Medium -> Hard order
             raw_playlist.sort(key=lambda m: DojoEngine.MODE_DIFFICULTY.get(m, 2))
             
             detailed_playlist = []
@@ -88,7 +141,7 @@ class DojoEngine:
                 
             chosen_id = random.choice(candidates)
             
-            # Pop the first available practice (which is guaranteed to be the easiest remaining one for this word)
+            # Pop the first available practice (guaranteed easiest remaining for this word)
             next_practice = word_queues[chosen_id].pop(0)
             final_queue.append(next_practice)
             
@@ -99,6 +152,7 @@ class DojoEngine:
                 active_word_ids.remove(chosen_id)
                 
         return {
-            'total_due': len(due_words),
-            'session_queue': final_queue 
+            'total_due': total_due_unlimited,
+            'session_queue': final_queue,
+            'watering_can_empty': False
         }

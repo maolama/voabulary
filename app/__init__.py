@@ -1,6 +1,6 @@
 import os
 from flask import Flask
-from .extensions import db, logger
+from .extensions import db, logger, migrate
 from .services.dictionary import DictionaryService
 
 # Global dictionary service instance
@@ -21,6 +21,7 @@ def create_app():
     
     # Initialize Extensions
     db.init_app(app)
+    migrate.init_app(app, db)
     
     # Initialize our Dictionary Service (Compiles MDX/MDD to SQLite if needed)
     dict_dir = os.path.join(base_dir, 'dict')

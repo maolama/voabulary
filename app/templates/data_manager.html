@@ -22,7 +22,12 @@
                 <button @click="tab = 'file'" 
                         :class="tab === 'file' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
                         class="flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors">
-                    File Upload (.txt / .csv)
+                    File Upload
+                </button>
+                <button @click="tab = 'gsheet'" 
+                        :class="tab === 'gsheet' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+                        class="flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors">
+                    Legacy GSheet
                 </button>
             </div>
 
@@ -46,20 +51,22 @@
                         <span class="text-sm font-bold text-indigo-600 block">Click to browse or drag file here</span>
                         <span class="text-xs text-slate-400 mt-1 block">Supports newline separated TXT or standard CSV</span>
                     </div>
-
-                    <div class="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                        <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">CSV Format Guide</p>
-                        <pre class="text-xs text-slate-700 font-mono leading-relaxed">abandon, "gre, verb"
-ubiquitous, daily
-serendipity</pre>
-                        <p class="text-[10px] text-slate-400 mt-2 border-t border-slate-200 pt-2">
-                            <b>Col 1:</b> Word (Required)<br>
-                            <b>Col 2:</b> Tags (Optional. Wrap in quotes if using multiple comma-separated tags).
-                        </p>
-                    </div>
-
                     <button type="submit" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-md hover:bg-slate-800 transition transform active:scale-95">
                         Process File
+                    </button>
+                </form>
+
+                <form x-show="tab === 'gsheet'" x-cloak hx-post="/data/import-gsheet" hx-encoding="multipart/form-data" hx-target="#import-result" class="space-y-4">
+                    <p class="text-xs text-slate-500 font-medium">Upload the 24-column CSV from your old Google Sheet:</p>
+                    <div class="border-2 border-dashed border-indigo-300 bg-indigo-50/50 rounded-xl p-6 text-center hover:bg-indigo-100/50 transition cursor-pointer relative">
+                        <input type="file" name="file" accept=".csv" required
+                               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <span class="text-3xl block mb-2">📊</span>
+                        <span class="text-sm font-bold text-indigo-600 block">Select Legacy AppScript CSV</span>
+                        <span class="text-xs text-slate-500 mt-1 block">Preserves Next Review dates and 24-column notes</span>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-indigo-700 transition transform active:scale-95">
+                        Migrate Legacy Data
                     </button>
                 </form>
 
@@ -119,7 +126,6 @@ serendipity</pre>
 </div>
 
 <script>
-    // A helper function for the "Copy" button that will be injected by HTMX
     window.copyToClipboard = function(elementId) {
         const textArea = document.getElementById(elementId);
         textArea.select();

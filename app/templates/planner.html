@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script src="/static/js/Sortable.min.js"></script>
+
+<style>
+    /* Base Transitions for smooth theme switching */
+    .theme-transition { transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease; }
+
+    /* --- THE PALETTES --- */
+    
+    /* 1. Classic Blue/Slate */
+    .planner-wrapper[data-theme="default"] {
+        --bg-core: #f1f5f9;       /* Slate 100 - Core Week */
+        --bg-ext: #ffffff;        /* White - Lighter Extended Days */
+        --bg-today: #e0e7ff;      /* Indigo 100 - Distinct Today */
+        --border-core: #cbd5e1;
+        --border-ext: #f1f5f9;
+        --border-today: #4338ca;  /* Indigo 700 - Heavy Today Border */
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --text-today: #1e3a8a;
+        --pill-bg: #ffffff;
+        --pill-border: #cbd5e1;
+        --pill-hover-border: #818cf8;
+    }
+    
+    /* 2. Midnight Dark Mode */
+    .planner-wrapper[data-theme="dark"] {
+        --bg-core: #1e293b;       /* Slate 800 */
+        --bg-ext: #0f172a;        /* Slate 900 - Darker recessed */
+        --bg-today: #312e81;      /* Indigo 900 */
+        --border-core: #475569;
+        --border-ext: #334155;
+        --border-today: #818cf8;  /* Bright Indigo 400 glow */
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --text-today: #ffffff;
+        --pill-bg: #334155;
+        --pill-border: #475569;
+        --pill-hover-border: #a5b4fc;
+    }
+
+    /* 3. Zen Matcha */
+    .planner-wrapper[data-theme="zen"] {
+        --bg-core: #f0fdf4;       /* Green 50 */
+        --bg-ext: #ffffff;
+        --bg-today: #d1fae5;      /* Green 100 */
+        --border-core: #a7f3d0;
+        --border-ext: #ecfdf5;
+        --border-today: #059669;  /* Emerald 600 */
+        --text-main: #064e3b;
+        --text-muted: #047857;
+        --text-today: #022c22;
+        --pill-bg: #ffffff;
+        --pill-border: #a7f3d0;
+        --pill-hover-border: #34d399;
+    }
+
+    /* 4. Autumn Sunset */
+    .planner-wrapper[data-theme="sunset"] {
+        --bg-core: #fff7ed;       /* Orange 50 */
+        --bg-ext: #ffffff;
+        --bg-today: #ffedd5;      /* Orange 100 */
+        --border-core: #fed7aa;
+        --border-ext: #fff7ed;
+        --border-today: #ea580c;  /* Orange 600 */
+        --text-main: #431407;
+        --text-muted: #9a3412;
+        --text-today: #7c2d12;
+        --pill-bg: #ffffff;
+        --pill-border: #fed7aa;
+        --pill-hover-border: #fb923c;
+    }
+
+    /* 5. Deep Ocean */
+    .planner-wrapper[data-theme="ocean"] {
+        --bg-core: #f0f9ff;       /* Sky 50 */
+        --bg-ext: #ffffff;
+        --bg-today: #ccfbf1;      /* Teal 100 */
+        --border-core: #bae6fd;
+        --border-ext: #f0f9ff;
+        --border-today: #0d9488;  /* Teal 600 */
+        --text-main: #0c4a6e;
+        --text-muted: #0369a1;
+        --text-today: #134e4a;
+        --pill-bg: #ffffff;
+        --pill-border: #bae6fd;
+        --pill-hover-border: #2dd4bf;
+    }
+
+    /* 6. Wild Berry */
+    .planner-wrapper[data-theme="berry"] {
+        --bg-core: #faf5ff;       /* Purple 50 */
+        --bg-ext: #ffffff;
+        --bg-today: #fce7f3;      /* Pink 100 */
+        --border-core: #e9d5ff;
+        --border-ext: #faf5ff;
+        --border-today: #db2777;  /* Pink 600 */
+        --text-main: #3b0764;
+        --text-muted: #7e22ce;
+        --text-today: #831843;
+        --pill-bg: #ffffff;
+        --pill-border: #e9d5ff;
+        --pill-hover-border: #f472b6;
+    }
+
+    /* 7. Morning Coffee */
+    .planner-wrapper[data-theme="coffee"] {
+        --bg-core: #f5f5f4;       /* Stone 100 */
+        --bg-ext: #fafaf9;        /* Stone 50 */
+        --bg-today: #e7e5e4;      /* Stone 200 */
+        --border-core: #d6d3d1;
+        --border-ext: #f5f5f4;
+        --border-today: #78350f;  /* Amber 900 */
+        --text-main: #292524;
+        --text-muted: #57534e;
+        --text-today: #1c1917;
+        --pill-bg: #ffffff;
+        --pill-border: #d6d3d1;
+        --pill-hover-border: #a8a29e;
+    }
+
+    /* --- SEMANTIC ROW CLASSES --- */
+    .row-core { 
+        background-color: var(--bg-core); 
+        border-color: var(--border-core); 
+        color: var(--text-main); 
+    }
+    .row-ext { 
+        background-color: var(--bg-ext); 
+        border-color: var(--border-ext); 
+        color: var(--text-muted); 
+    }
+    /* "Today" gets a massive left border and deep background to stand out completely */
+    .row-today { 
+        background-color: var(--bg-today); 
+        border-color: var(--border-core); 
+        border-left: 6px solid var(--border-today) !important; 
+        color: var(--text-today);
+        box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.02);
+    }
+    
+    .th-border-divider { border-color: var(--border-core); }
+
+    /* --- WORD PILLS --- */
+    .th-pill { 
+        background-color: var(--pill-bg); 
+        border: 1px solid var(--pill-border); 
+        color: var(--text-main);
+        transition: all 0.15s ease;
+    }
+    .th-pill:hover { 
+        border-color: var(--pill-hover-border); 
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Cascading Animation for Rows */
+    @keyframes slideInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-row {
+        opacity: 0;
+        animation: slideInUp 0.4s ease forwards;
+    }
+</style>
+
+<div id="plannerWrapper" class="planner-wrapper" data-theme="default">
+    
+    <div class="row-core rounded-3xl shadow-sm border th-border-divider overflow-hidden flex flex-col theme-transition">
+        
+        <div class="bg-slate-900 p-5 flex items-center justify-between text-white shadow-md z-10 sticky top-0">
+            <div>
+                <h2 class="text-xl md:text-2xl font-black tracking-tight flex items-center gap-3">
+                    <span>🗓️ Planner</span>
+                    <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold tracking-widest uppercase">Limit: {{ daily_limit }}</span>
+                </h2>
+                <div class="flex items-center gap-4 mt-2">
+                    <p class="text-slate-400 text-xs md:text-sm font-medium hidden md:block">Click a plant to time-travel, or drag to rebalance.</p>
+                    
+                    <div class="flex space-x-2 md:pl-4 md:border-l border-slate-700">
+                        <button onclick="setTheme('default')" class="w-5 h-5 rounded-full bg-slate-200 hover:scale-110 transition" title="Classic"></button>
+                        <button onclick="setTheme('dark')" class="w-5 h-5 rounded-full bg-slate-800 border border-slate-500 hover:scale-110 transition" title="Midnight"></button>
+                        <button onclick="setTheme('zen')" class="w-5 h-5 rounded-full bg-emerald-200 hover:scale-110 transition" title="Zen Matcha"></button>
+                        <button onclick="setTheme('sunset')" class="w-5 h-5 rounded-full bg-orange-200 hover:scale-110 transition" title="Sunset"></button>
+                        <button onclick="setTheme('ocean')" class="w-5 h-5 rounded-full bg-sky-200 hover:scale-110 transition" title="Deep Ocean"></button>
+                        <button onclick="setTheme('berry')" class="w-5 h-5 rounded-full bg-pink-200 hover:scale-110 transition" title="Wild Berry"></button>
+                        <button onclick="setTheme('coffee')" class="w-5 h-5 rounded-full bg-stone-300 hover:scale-110 transition" title="Morning Coffee"></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2 md:space-x-4 bg-slate-800 rounded-xl p-1 shadow-inner border border-slate-700">
+                <a href="/planner?date={{ prev_week_str }}" class="p-2 hover:bg-slate-700 rounded-lg transition text-slate-300 hover:text-white" title="Previous Week">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </a>
+                <span class="font-bold tracking-wide w-28 md:w-32 text-center text-indigo-200 text-sm md:text-base">{{ current_month_name }}</span>
+                <a href="/planner?date={{ next_week_str }}" class="p-2 hover:bg-slate-700 rounded-lg transition text-slate-300 hover:text-white" title="Next Week">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </a>
+            </div>
+        </div>
+
+        <div class="flex flex-col border-t th-border-divider theme-transition">
+            
+            {% for day in calendar_data %}
+            <div class="animate-row flex flex-col md:flex-row w-full border-b theme-transition
+                        {% if day.is_today %} row-today
+                        {% elif day.is_core %} row-core
+                        {% else %} row-ext {% endif %}"
+                 style="animation-delay: {{ loop.index0 * 40 }}ms;">
+                
+                <div class="md:w-48 shrink-0 p-3 md:p-4 md:border-r th-border-divider flex md:flex-col justify-between items-center md:items-start theme-transition">
+                    <div>
+                        <span class="text-xs font-black uppercase tracking-widest block opacity-70">
+                            {{ day.day_name }}
+                        </span>
+                        <h3 class="text-xl md:text-2xl font-black">
+                            {{ day.day_num }}
+                        </h3>
+                    </div>
+                    
+                    <div class="mt-0 md:mt-2">
+                        <span id="counter-{{ day.date_str }}" 
+                              class="text-xs font-bold px-2.5 py-1 rounded-lg transition-colors inline-block border
+                                     {% if day.count > daily_limit %}bg-rose-100 text-rose-700 border-rose-300{% else %}bg-black/5 border-black/10{% endif %}">
+                            <span class="count-val">{{ day.count }}</span> / {{ daily_limit }} words
+                        </span>
+                    </div>
+                </div>
+
+                <ul id="list-{{ day.date_str }}" data-date="{{ day.date_str }}" 
+                    class="calendar-dropzone flex-grow p-3 md:p-4 flex flex-wrap gap-2 items-start content-start min-h-[60px]">
+                    
+                    {% for word in day.words %}
+                    <li class="th-pill inline-flex items-center gap-2 px-3 py-1.5 rounded-full shadow-sm cursor-pointer group relative" 
+                        data-id="{{ word.id }}">
+                        <span class="font-bold text-sm truncate word-text-span" title="{{ word.word }}">
+                            {{ word.word }}
+                        </span>
+                        <span class="text-xs select-none shrink-0" title="Level {{ word.mastery_level }}">
+                            {% if word.growth_stage == 'seedling' %}🌱{% elif word.growth_stage == 'growing' %}🌿{% else %}🌸{% endif %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+
+        </div>
+    </div>
+</div>
+
+<div id="dateModal" class="fixed inset-0 bg-slate-900/70 hidden items-center justify-center z-[100] backdrop-blur-sm">
+    <div class="bg-white rounded-3xl p-8 shadow-2xl max-w-sm w-full mx-4 transform transition-all scale-95 opacity-0 duration-200" id="dateModalContent">
+        <h3 class="text-2xl font-black text-slate-800 mb-1">Time Travel 🚀</h3>
+        <p class="text-slate-500 mb-6 text-sm font-medium">Pick a new date for <span id="modalWordName" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100"></span>.</p>
+
+        <input type="date" id="customDateInput" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 text-lg font-bold text-slate-700 focus:border-indigo-500 focus:ring-0 mb-6 outline-none">
+
+        <div class="flex space-x-3">
+            <button id="cancelModalBtn" class="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition">Cancel</button>
+            <button id="saveModalBtn" class="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-md">Schedule</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- THEME ENGINE ---
+function setTheme(themeName) {
+    document.getElementById('plannerWrapper').setAttribute('data-theme', themeName);
+    localStorage.setItem('planner_theme', themeName);
+}
+// Load saved theme instantly on DOM load
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('planner_theme') || 'default';
+    setTheme(savedTheme);
+});
+
+// --- PLANNER LOGIC ---
+document.addEventListener('DOMContentLoaded', function () {
+    const dailyLimit = parseInt("{{ daily_limit }}");
+    const dropzones = document.querySelectorAll('.calendar-dropzone');
+    
+    let pendingAction = null; 
+    const modal = document.getElementById('dateModal');
+    const modalContent = document.getElementById('dateModalContent');
+
+    function updateColumnCounter(listElement) {
+        const dateStr = listElement.getAttribute('data-date');
+        const itemCount = listElement.children.length;
+        const counterBadge = document.getElementById(`counter-${dateStr}`);
+        if (!counterBadge) return;
+        
+        const countText = counterBadge.querySelector('.count-val');
+        countText.innerText = itemCount;
+
+        if (itemCount > dailyLimit) {
+            counterBadge.classList.remove('bg-black/5', 'border-black/10');
+            counterBadge.classList.add('bg-rose-100', 'text-rose-700', 'border-rose-300');
+        } else {
+            counterBadge.classList.add('bg-black/5', 'border-black/10');
+            counterBadge.classList.remove('bg-rose-100', 'text-rose-700', 'border-rose-300');
+        }
+    }
+
+    document.querySelectorAll('.calendar-dropzone').forEach(zone => {
+        zone.addEventListener('click', function(e) {
+            const li = e.target.closest('li[data-id]');
+            if (li) {
+                const wordId = li.getAttribute('data-id');
+                const wordText = li.querySelector('.word-text-span').innerText;
+                const sourceList = li.closest('ul');
+                openCustomDateModal(li, sourceList, wordId, wordText);
+            }
+        });
+    });
+
+    const sortableOptions = {
+        group: 'calendar-week', 
+        animation: 150,
+        ghostClass: 'opacity-30', 
+        dragClass: 'scale-105 cursor-grabbing',   
+        delay: 50, 
+        delayOnTouchOnly: true,
+        scroll: true, 
+        scrollSensitivity: 120, 
+        scrollSpeed: 20,
+        forceFallback: true,
+
+        onEnd: async function (evt) {
+            const targetList = evt.to;
+            const sourceList = evt.from;
+            const newDateStr = targetList.getAttribute('data-date');
+            const wordId = evt.item.getAttribute('data-id');
+            
+            if (sourceList !== targetList) {
+                updateColumnCounter(sourceList);
+                updateColumnCounter(targetList);
+
+                try {
+                    const response = await fetch(`/api/words/${wordId}/reschedule`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ next_review_date: newDateStr })
+                    });
+                    if (!response.ok) throw new Error("API failed");
+                    
+                } catch (error) {
+                    sourceList.appendChild(evt.item); 
+                    updateColumnCounter(sourceList);
+                    updateColumnCounter(targetList);
+                    alert("Network error: Could not reschedule plant.");
+                }
+            }
+        },
+    };
+
+    dropzones.forEach(zone => new Sortable(zone, sortableOptions));
+
+    // MODAL CONTROLS
+    function openCustomDateModal(item, sourceList, wordId, wordText) {
+        pendingAction = { item, sourceList, wordId };
+        document.getElementById('modalWordName').innerText = wordText;
+
+        const defaultDate = new Date();
+        defaultDate.setDate(defaultDate.getDate() + 7);
+        document.getElementById('customDateInput').value = defaultDate.toISOString().split('T')[0];
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            modalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeCustomDateModal() {
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            pendingAction = null;
+        }, 200);
+    }
+
+    document.getElementById('cancelModalBtn').addEventListener('click', closeCustomDateModal);
+
+    document.getElementById('saveModalBtn').addEventListener('click', async () => {
+        const newDate = document.getElementById('customDateInput').value;
+        if (!newDate || !pendingAction) return;
+
+        const btn = document.getElementById('saveModalBtn');
+        btn.innerText = "Sending...";
+
+        try {
+            const response = await fetch(`/api/words/${pendingAction.wordId}/reschedule`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ next_review_date: newDate })
+            });
+
+            if (!response.ok) throw new Error("API failed");
+
+            pendingAction.item.remove();
+            updateColumnCounter(pendingAction.sourceList);
+
+        } catch (error) {
+            alert("Failed to reschedule plant.");
+        } finally {
+            btn.innerText = "Schedule";
+            closeCustomDateModal();
+        }
+    });
+});
+</script>
+
+{% endblock %}

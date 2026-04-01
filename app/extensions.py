@@ -1,8 +1,11 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate # NEW
+
 import logging
 
 # Initialize SQLAlchemy
 db = SQLAlchemy()
+migrate = Migrate() # NEW
 
 # Configure standard industry logging
 logging.basicConfig(

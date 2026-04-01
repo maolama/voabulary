@@ -2,11 +2,12 @@ import os
 import sqlite3
 import urllib.parse
 import subprocess # <-- Add this at the top
-from datetime import datetime
+from datetime import date, timedelta, datetime
 from flask import Blueprint, render_template, Response, request
 from sqlalchemy import func
 from ..models import SavedWord
 from ..services.gamification import GamificationService
+from ..services.review.engine import DojoEngine # NEW: Added for Watering Can capacity calculation
 from ..extensions import db
 from app import dict_service
 import random
@@ -31,6 +32,9 @@ def dashboard():
     # Fetch words actively due right now
     due_words = SavedWord.query.filter(SavedWord.next_review_date <= today).order_by(SavedWord.next_review_date).all()
     
+    # NEW: Calculate the watering can capacity for the Garden HUD
+    remaining_capacity = DojoEngine.get_remaining_daily_capacity()
+    
     return render_template('dashboard.html', 
                            total_words=total_words, 
                            due_today=due_today, 
@@ -38,7 +42,8 @@ def dashboard():
                            mastered=mastered,
                            due_words=due_words,
                            profile=profile,
-                           heatmap=heatmap)
+                           heatmap=heatmap,
+                           remaining_capacity=remaining_capacity) # NEW: Passed to template
 
 @bp.route('/search')
 def search_page():
@@ -121,11 +126,9 @@ def serve_media(filename):
     # 4. THE HYBRID QUEUE: Put target dictionary FIRST, then fallback to others
     dicts_to_search = []
     
-    # Prioritize the dictionary that actually asked for the file
     if target_dict and target_dict in dict_service.active_dictionaries:
         dicts_to_search.append((target_dict, dict_service.active_dictionaries[target_dict]))
         
-    # Append the rest of the dictionaries to act as a safety net
     for d_name, d_handler in dict_service.active_dictionaries.items():
         if d_name != target_dict:
             dicts_to_search.append((d_name, d_handler))
@@ -140,7 +143,7 @@ def serve_media(filename):
             for pattern in search_patterns:
                 c.execute("SELECT filepath, data FROM media WHERE filepath LIKE ? LIMIT 1", (pattern,))
                 row = c.fetchone()
-                if row: break # Found it! Stop searching this database.
+                if row: break
                 
             conn.close()
             
@@ -148,7 +151,6 @@ def serve_media(filename):
                 db_filepath, data = row
                 db_ext = os.path.splitext(db_filepath)[1].lower()
                 
-                # --- SPX TRANSCODING INTERCEPTOR ---
                 if db_ext == '.spx':
                     mp3_data = transcode_spx_to_mp3(data)
                     if mp3_data:
@@ -156,7 +158,6 @@ def serve_media(filename):
                     else:
                         return "Audio transcoding failed", 500
 
-                # --- STANDARD MIME TYPES ---
                 mime_type = 'application/octet-stream'
                 if db_ext in ['.png']: mime_type = 'image/png'
                 elif db_ext in ['.jpg', '.jpeg']: mime_type = 'image/jpeg'
@@ -175,7 +176,6 @@ def serve_media(filename):
 @bp.route('/words')
 def words_list():
     """Displays the list of all saved words and their SRS statistics."""
-    # Order by next review date, then by id
     words = SavedWord.query.order_by(SavedWord.next_review_date.asc(), SavedWord.id.desc()).all()
     return render_template('words.html', words=words)
 
@@ -183,35 +183,107 @@ def words_list():
 def word_detail(word_id):
     """Deep dive into a specific word's stats and dictionary entries."""
     word_obj = SavedWord.query.get_or_404(word_id)
-    # Fetch dictionary entries
     results = dict_service.search_word(word_obj.word)
     return render_template('word_detail.html', word=word_obj, results=results)
 
 @bp.route('/settings')
 def settings_page():
-    """Settings page for TTS Voice selection."""
-    return render_template('settings.html')
+    """Settings page for TTS Voice selection and Garden Control."""
+    from ..services.gamification import GamificationService
+    profile = GamificationService.get_or_create_profile()
+    return render_template('settings.html', profile=profile)
 
 @bp.route('/aggregate/<query>')
 def aggregate_view(query):
-    # Fetch the pivoted semantic feature data
     aggregated_data = dict_service.get_aggregated_features(query)
     
-    # FIXED: Check for 'pos_blocks' instead of the old 'definitions' key
     if not aggregated_data or not aggregated_data.get('pos_blocks'):
-        # Fallback if the word isn't found or data extraction failed
         return render_template('aggregate.html', data=None, query=query)
         
     return render_template('aggregate.html', data=aggregated_data)
 
 
+# ==========================================
+# NEW: THE GARDEN PLANNER ROUTE
+# ==========================================
+@bp.route('/planner')
+def garden_planner():
+    """Serves the 11-Day Kanban Garden Planner."""
+    from datetime import date, timedelta, datetime
+    from ..models import UserProfile, SavedWord
+    
+    target_date_str = request.args.get('date')
+    if target_date_str:
+        try:
+            target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            target_date = date.today()
+    else:
+        target_date = date.today()
 
+    # 1. Base the core week from Saturday
+    days_since_saturday = (target_date.weekday() + 2) % 7
+    start_of_core_week = target_date - timedelta(days=days_since_saturday)
+    
+    # 2. The 11-Day Window: 2 days before, 8 days after (total 11)
+    start_of_view = start_of_core_week - timedelta(days=2) # Thursday
+    end_of_view = start_of_core_week + timedelta(days=8)   # Sunday
+    
+    view_dates = [start_of_view + timedelta(days=i) for i in range(11)]
+
+    # 3. Fetch words in this 11-day range
+    words_in_range = SavedWord.query.filter(
+        SavedWord.next_review_date >= start_of_view,
+        SavedWord.next_review_date <= end_of_view
+    ).all()
+
+    words_by_date = {d.strftime('%Y-%m-%d'): [] for d in view_dates}
+    for w in words_in_range:
+        words_by_date[w.next_review_date.strftime('%Y-%m-%d')].append(w)
+
+    # 4. Overdue safety net (Catch forgotten words and put them on 'Today')
+    today = date.today()
+    if start_of_view <= today <= end_of_view:
+        overdue_words = SavedWord.query.filter(SavedWord.next_review_date < start_of_view).all()
+        words_by_date[today.strftime('%Y-%m-%d')].extend(overdue_words)
+
+    # 5. Build the view data
+    calendar_data = []
+    for d in view_dates:
+        day_words = words_by_date[d.strftime('%Y-%m-%d')]
+        day_words.sort(key=lambda w: w.mastery_level)
+        
+        # Identify if this day is part of the "core" week or the edges
+        is_core_week = start_of_core_week <= d < (start_of_core_week + timedelta(days=7))
+        
+        calendar_data.append({
+            'date_str': d.strftime('%Y-%m-%d'),
+            'day_name': d.strftime('%A')[:3], # Short name: 'Thu', 'Fri', 'Sat'
+            'day_num': d.strftime('%d'),
+            'is_today': d == today,
+            'is_past': d < today,
+            'is_core': is_core_week,
+            'words': day_words,
+            'count': len(day_words)
+        })
+
+    prev_week = start_of_core_week - timedelta(days=7)
+    next_week = start_of_core_week + timedelta(days=7)
+    
+    profile = UserProfile.query.first()
+    daily_limit = profile.daily_review_limit if profile and profile.daily_review_limit else 50
+
+    return render_template('planner.html',
+                           calendar_data=calendar_data,
+                           current_month_name=start_of_core_week.strftime('%B %Y'),
+                           prev_week_str=prev_week.strftime('%Y-%m-%d'),
+                           next_week_str=next_week.strftime('%Y-%m-%d'),
+                           daily_limit=daily_limit)
 
 # --- HELPER FUNCTION ---
 def transcode_spx_to_mp3(spx_data):
     """Converts SPX binary data to MP3 binary data in memory using FFmpeg."""
     try:
-        # We pipe the binary data in, and ffmpeg pipes MP3 binary data out
         process = subprocess.Popen(
             ['ffmpeg', '-i', 'pipe:0', '-f', 'mp3', 'pipe:1'],
             stdin=subprocess.PIPE,

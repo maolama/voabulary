@@ -48,12 +48,52 @@
         </div>
 
         <div x-show="!isLoading" x-cloak class="space-y-8">
-            <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 max-w-2xl">
-                <h2 class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Global Settings</h2>
-                <div class="flex items-center justify-between">
-                    <label class="text-slate-600 font-medium">Default Daily Word Limit</label>
-                    <input type="number" x-model.number="config.default_session_words" min="1" max="100" 
-                           class="w-24 text-center text-xl font-bold text-indigo-600 bg-slate-50 border border-slate-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2">Dojo Session Limit</h2>
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <label class="text-slate-600 font-bold">Words Per Battle</label>
+                                <p class="text-xs text-slate-400">How many words to load per session.</p>
+                            </div>
+                            <input type="number" x-model.number="config.default_session_words" min="1" max="100" 
+                                   class="w-24 text-center text-xl font-bold text-indigo-600 bg-slate-50 border border-slate-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2">
+                        </div>
+                    </div>
+                    </div>
+
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-emerald-200 border-t-4 border-t-emerald-500 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 mb-4 border-b border-emerald-100 pb-2">Garden Settings</h2>
+                        
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <label class="text-slate-600 font-bold">Watering Can Capacity</label>
+                                <p class="text-xs text-slate-400">Max total daily reviews (Prevents Burnout).</p>
+                            </div>
+                            <input type="number" id="daily_limit_input" value="{{ profile.daily_review_limit if profile else 50 }}" min="10" max="500" 
+                                   class="w-24 text-center text-xl font-bold text-blue-600 bg-slate-50 border border-slate-200 rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2">
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-slate-600 font-bold">Magical Greenhouse</label>
+                                <p class="text-xs text-slate-400">Pause FSRS time completely.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="settingsVacationToggle" class="sr-only peer" {% if profile and profile.vacation_mode %}checked{% endif %}>
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner"></div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end">
+                        <button onclick="saveGardenSettings()" id="save-garden-btn" class="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg hover:bg-emerald-700 transition shadow">
+                            Save Garden Rules
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -154,6 +194,35 @@
 </div>
 
 <script>
+// --- GARDEN SETTINGS SAVER (Standard JS) ---
+async function saveGardenSettings() {
+    const btn = document.getElementById('save-garden-btn');
+    btn.innerText = "Saving...";
+    
+    const limit = parseInt(document.getElementById('daily_limit_input').value);
+    const vacation = document.getElementById('settingsVacationToggle').checked;
+    
+    try {
+        await fetch('/api/user/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                daily_review_limit: limit,
+                vacation_mode: vacation
+            })
+        });
+        btn.innerText = "Saved! ✓";
+        btn.classList.replace('bg-emerald-600', 'bg-slate-800');
+    } catch(e) {
+        btn.innerText = "Error Saving";
+    }
+    
+    setTimeout(() => { 
+        btn.innerText = "Save Garden Rules"; 
+        btn.classList.replace('bg-slate-800', 'bg-emerald-600');
+    }, 2000);
+}
+
 // --- ALPINE.JS APP LOGIC (Tabs & Dojo Config) ---
 function settingsApp() {
     return {
@@ -167,7 +236,6 @@ function settingsApp() {
             phases: { '1': {}, '2': {}, '3': {} }
         },
         
-        // NEW: Grouped modes array for clean table rendering
         modesGroups: [
             {
                 phase: 'Level 1: Recognition (Planting)',

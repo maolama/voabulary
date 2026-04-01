@@ -5,6 +5,7 @@ from ..models import SavedWord, Tag
 from ..extensions import db, logger
 from ..services.gamification import GamificationService
 from app import dict_service
+from ..services.gsheet_importer import GoogleSheetImporter
 
 # Note: This is usually registered in your app factory with url_prefix='/data'
 bp = Blueprint('data', __name__)
@@ -199,3 +200,30 @@ def export_csv():
         as_attachment=True,
         download_name='empire_full_backup.csv'
     )
+
+
+@bp.route('/import-gsheet', methods=['POST'])
+def import_legacy_gsheet():
+    """Handles the 24-column CSV export from the legacy Google Apps Script."""
+    if 'file' not in request.files:
+        return '<div class="p-4 bg-rose-50 text-rose-800 rounded-xl">❌ No file uploaded</div>', 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return '<div class="p-4 bg-rose-50 text-rose-800 rounded-xl">❌ No file selected</div>', 400
+
+    if not file.filename.lower().endswith('.csv'):
+        return '<div class="p-4 bg-rose-50 text-rose-800 rounded-xl">❌ Please upload a .csv file</div>', 400
+
+    try:
+        # Call the adapter we built in the previous step
+        success_count, failed_words = GoogleSheetImporter.process_csv(file)
+        
+        return f"""
+        <div class="p-4 bg-indigo-50 text-indigo-800 rounded-xl font-medium border border-indigo-200 shadow-sm transition-all">
+            🚀 Successfully migrated <b>{success_count}</b> words from legacy Google Sheets!
+        </div>
+        """
+    except Exception as e:
+        logger.error(f"Legacy GSheet import error: {e}")
+        return f'<div class="p-4 bg-rose-50 text-rose-800 rounded-xl">❌ Error processing legacy file: {str(e)}</div>', 500

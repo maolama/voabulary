@@ -1,6 +1,45 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-4xl mx-auto mt-8" x-data="wordRelations({{ word.id }})">
+
+<style>
+    :root {
+        /* Optimal Readability Defaults (Segoe UI + Vazirmatn/Tahoma) */
+        
+        /* 1. Definitions (Large, Medium-Weight anchoring text) */
+        --f-def-en: "Segoe UI", system-ui, sans-serif; --s-def-en: 18px; --w-def-en: 500; --i-def-en: normal;
+        --f-def-fa: "Vazirmatn", Tahoma, sans-serif;   --s-def-fa: 17px; --w-def-fa: 500; --i-def-fa: normal;
+        
+        /* 2. Examples (Slightly smaller, regular weight. English is Italicized) */
+        --f-ex-en: "Segoe UI", system-ui, sans-serif;  --s-ex-en: 16px; --w-ex-en: 400; --i-ex-en: italic;
+        --f-ex-fa: "Vazirmatn", Tahoma, sans-serif;    --s-ex-fa: 15px; --w-ex-fa: 400; --i-ex-fa: normal;
+        
+        /* 3. Relations/Tags (Small, punchy, semibold) */
+        --f-rel-en: "Segoe UI", system-ui, sans-serif; --s-rel-en: 14px; --w-rel-en: 600; --i-rel-en: normal;
+        --f-rel-fa: "Vazirmatn", Tahoma, sans-serif;   --s-rel-fa: 13px; --w-rel-fa: 600; --i-rel-fa: normal;
+        
+        /* 4. Notes & Tips (Standard reading text) */
+        --f-note-en: "Segoe UI", system-ui, sans-serif;--s-note-en: 15px; --w-note-en: 400; --i-note-en: normal;
+        --f-note-fa: "Vazirmatn", Tahoma, sans-serif;  --s-note-fa: 15px; --w-note-fa: 400; --i-note-fa: normal;
+    }
+
+    /* Semantic Typography Classes */
+    .txt-def-en  { font-family: var(--f-def-en) !important;  font-size: var(--s-def-en) !important;  font-weight: var(--w-def-en) !important; font-style: var(--i-def-en) !important; }
+    .txt-def-fa  { font-family: var(--f-def-fa) !important;  font-size: var(--s-def-fa) !important;  font-weight: var(--w-def-fa) !important; font-style: var(--i-def-fa) !important; line-height: 1.7; }
+    
+    .txt-ex-en   { font-family: var(--f-ex-en) !important;   font-size: var(--s-ex-en) !important;   font-weight: var(--w-ex-en) !important; font-style: var(--i-ex-en) !important; }
+    .txt-ex-fa   { font-family: var(--f-ex-fa) !important;   font-size: var(--s-ex-fa) !important;   font-weight: var(--w-ex-fa) !important; font-style: var(--i-ex-fa) !important; line-height: 1.7; }
+    
+    .txt-rel-en  { font-family: var(--f-rel-en) !important;  font-size: var(--s-rel-en) !important;  font-weight: var(--w-rel-en) !important; font-style: var(--i-rel-en) !important; }
+    .txt-rel-fa  { font-family: var(--f-rel-fa) !important;  font-size: var(--s-rel-fa) !important;  font-weight: var(--w-rel-fa) !important; font-style: var(--i-rel-fa) !important; }
+    
+    .txt-note-en { font-family: var(--f-note-en) !important; font-size: var(--s-note-en) !important; font-weight: var(--w-note-en) !important; font-style: var(--i-note-en) !important; }
+    .txt-note-fa { font-family: var(--f-note-fa) !important; font-size: var(--s-note-fa) !important; font-weight: var(--w-note-fa) !important; font-style: var(--i-note-fa) !important; line-height: 1.7; }
+
+    /* General English fallback for UI wrappers */
+    .vocab-app-wrapper { font-family: "Segoe UI", system-ui, sans-serif; }
+</style>
+
+<div class="max-w-4xl mx-auto mt-8 vocab-app-wrapper" x-data="wordRelations({{ word.id }})">
     <div class="mb-4">
         <a href="/words" class="text-indigo-600 hover:underline">&larr; Back to Archive</a>
     </div>
@@ -43,64 +82,46 @@
                     class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center">
                 🔗 Synonyms & Antonyms
             </button>
+            <button @click="activeTab = 'anchor'" 
+                    :class="activeTab === 'anchor' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center gap-2">
+                🧠 Brain Anchor
+            </button>
         </nav>
     </div>
 
     <div x-show="activeTab === 'definitions'" class="space-y-6">
         {% for result in results %}
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" x-data="{ expanded: true }">
-            
             <div class="px-6 flex justify-between items-center border-b border-slate-100 cursor-pointer hover:brightness-95 transition-all" 
                 style="background-color: {{ result.color }}; height: 60px; min-height: 60px;"
                 @click="expanded = !expanded">
-                
                 <div class="flex items-center space-x-3">
-                    <svg class="w-5 h-5 text-slate-700 transition-transform duration-300" 
-                         :class="expanded ? 'rotate-180' : ''" 
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-
+                    <svg class="w-5 h-5 text-slate-700 transition-transform duration-300" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     <div class="flex flex-col justify-center">
                         <span class="text-sm font-bold text-slate-800 uppercase tracking-wider">{{ result.name }}</span>
                     </div>
                 </div>
-                
                 <div class="flex items-center">
-                    <button 
-                        type="button"
-                        onclick="event.stopPropagation(); window.manualToggle('{{ result.name }}', this)"
-                        data-mode="full" 
-                        style="height: 40px; padding: 0 20px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: block !important; visibility: visible !important; background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; transition: all 0.2s;"
-                    >
+                    <button type="button" onclick="event.stopPropagation(); window.manualToggle('{{ result.name }}', this)" data-mode="full" style="height: 40px; padding: 0 20px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: block !important; visibility: visible !important; background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; transition: all 0.2s;">
                         🎯 SHOW PINNED ONLY
                     </button>
                 </div>
             </div>
-
             <div class="px-6 py-4" x-show="expanded" x-transition>
-                <iframe src="/entry/{{ result.name }}/{{ result.safe_query }}?word_id={{ word.id }}" 
-                        class="w-full border-none overflow-hidden min-h-[100px]" 
-                        id="iframe-{{ result.name }}"
-                        scrolling="no"></iframe>
+                <iframe src="/entry/{{ result.name }}/{{ result.safe_query }}?word_id={{ word.id }}" class="w-full border-none overflow-hidden min-h-[100px]" id="iframe-{{ result.name }}" scrolling="no"></iframe>
             </div>
         </div>
         {% endfor %}
     </div>
 
     <div x-show="activeTab === 'relations'" x-cloak class="grid grid-cols-2 gap-8">
-        
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 class="text-xl font-bold text-emerald-700 mb-4 flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                Synonyms
-            </h3>
-            
+            <h3 class="text-xl font-bold text-emerald-700 mb-4 flex items-center">Synonyms</h3>
             <form @submit.prevent="addRelation('synonym')" class="flex mb-4">
                 <input type="text" x-model="newSynonym" placeholder="Add synonym..." class="flex-grow bg-slate-50 border border-slate-200 rounded-l-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
                 <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-r-lg font-bold hover:bg-emerald-700 transition">+</button>
             </form>
-
             <div class="flex flex-wrap gap-2">
                 <template x-for="item in manualSynonyms" :key="item.id">
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
@@ -109,24 +130,17 @@
                     </span>
                 </template>
                 <template x-for="word in autoSynonyms" :key="word">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80" title="Auto-extracted from dictionary">
-                        <span x-text="word"></span>
-                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80"><span x-text="word"></span></span>
                 </template>
             </div>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 class="text-xl font-bold text-rose-700 mb-4 flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Antonyms
-            </h3>
-            
+            <h3 class="text-xl font-bold text-rose-700 mb-4 flex items-center">Antonyms</h3>
             <form @submit.prevent="addRelation('antonym')" class="flex mb-4">
                 <input type="text" x-model="newAntonym" placeholder="Add antonym..." class="flex-grow bg-slate-50 border border-slate-200 rounded-l-lg px-4 py-2 focus:outline-none focus:border-rose-500">
                 <button type="submit" class="bg-rose-600 text-white px-4 py-2 rounded-r-lg font-bold hover:bg-rose-700 transition">+</button>
             </form>
-
             <div class="flex flex-wrap gap-2">
                 <template x-for="item in manualAntonyms" :key="item.id">
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-rose-100 text-rose-800 border border-rose-200 shadow-sm">
@@ -135,47 +149,316 @@
                     </span>
                 </template>
                 <template x-for="word in autoAntonyms" :key="word">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80" title="Auto-extracted from dictionary">
-                        <span x-text="word"></span>
-                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80"><span x-text="word"></span></span>
                 </template>
             </div>
         </div>
     </div>
+
+    <div x-show="activeTab === 'anchor'" x-cloak>
+        <div x-data="notesEngine({{ word.id }}, {{ word.custom_data | tojson | forceescape if word.custom_data else 'null' }})">
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 border-b border-slate-200 pb-3 gap-4">
+                <div class="text-sm font-medium text-slate-500">
+                    Your personalized notes, mnemonics, and translations.
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-3">
+                    <button @click="$dispatch('open-typography')" class="text-xs font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition flex items-center gap-1 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm mr-2">
+                        🎨 Theme Studio
+                    </button>
+
+                    <a :href="`/api/words/${wordId}/export`" target="_blank" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                        📥 Export JSON
+                    </a>
+                    
+                    <label class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm cursor-pointer">
+                        📤 Import JSON
+                        <input type="file" accept=".json" class="hidden" @change="importJsonFile($event)">
+                    </label>
+
+                    <button @click="openEditor()" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 border-l pl-3 border-slate-200">
+                        ✏️ Edit Manually
+                    </button>
+                    
+                    <button @click="fillWithAI()" :disabled="isGenerating" class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow hover:shadow-md hover:scale-105 transition disabled:opacity-50 flex items-center gap-2">
+                        <span x-show="!isGenerating">✨ Auto-Fill with AI</span>
+                        <span x-show="isGenerating" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Consulting AI...
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div x-show="customData && !isGenerating" class="space-y-6 animate-fade-in-up">
+                <template x-for="posBlock in customData" :key="posBlock.partOfSpeech">
+                    <div class="bg-white rounded-2xl p-6 border-l-4 border-indigo-500 shadow-sm">
+                        
+                        <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                            <span class="text-lg font-black text-indigo-800 uppercase tracking-widest" x-text="posBlock.partOfSpeech"></span>
+                            <div class="flex space-x-3 text-sm font-mono text-slate-500">
+                                <span x-show="posBlock.usPronunciation" x-text="'US: ' + posBlock.usPronunciation"></span>
+                                <span x-show="posBlock.ukPronunciation" x-text="'UK: ' + posBlock.ukPronunciation"></span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <template x-for="(meaning, index) in posBlock.meanings" :key="index">
+                                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                    <div class="flex justify-between items-start gap-4">
+                                        <p class="txt-def-en text-slate-800" x-text="meaning.definition"></p>
+                                        <span x-show="meaning.translation" class="txt-def-fa shrink-0 bg-rose-100 text-rose-800 px-3 py-1 rounded-lg shadow-sm" dir="rtl" x-text="meaning.translation"></span>
+                                    </div>
+                                    
+                                    <p class="txt-ex-en text-slate-600 mt-2" x-show="meaning.example" x-text="`&quot;${meaning.example}&quot;`"></p>
+                                    
+                                    <div x-show="meaning.mnemonic" class="txt-note-en mt-4 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg flex items-start gap-3 shadow-inner">
+                                        <span class="text-xl font-sans">💡</span>
+                                        <span class="pt-0.5" x-text="meaning.mnemonic"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div x-show="posBlock.generalExamples && posBlock.generalExamples.length > 0" class="mt-6">
+                            <span class="font-bold text-slate-400 uppercase text-xs mb-2 block">General Examples</span>
+                            <ul class="space-y-2">
+                                <template x-for="(ex, index) in posBlock.generalExamples" :key="index">
+                                    <li>
+                                        <span class="txt-ex-en text-slate-700 block mb-0.5" x-text="`• ${ex.example}`"></span>
+                                        <span class="txt-ex-fa text-slate-500 block pl-3" dir="rtl" x-text="ex.translation"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+
+                        <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-6">
+                            <div x-show="posBlock.synonyms && posBlock.synonyms.length > 0">
+                                <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Synonyms</span>
+                                <div class="flex flex-wrap gap-1">
+                                    <template x-for="syn in posBlock.synonyms">
+                                        <span class="txt-rel-en bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md" x-text="syn"></span>
+                                    </template>
+                                </div>
+                            </div>
+                            <div x-show="posBlock.collocations && posBlock.collocations.length > 0">
+                                <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Collocations</span>
+                                <div class="flex flex-wrap gap-1">
+                                    <template x-for="col in posBlock.collocations">
+                                        <span class="txt-rel-en bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded-md" x-text="col"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div x-show="posBlock.notes && posBlock.notes.length > 0" class="mt-4 p-4 bg-slate-50 rounded-xl text-slate-700 border border-slate-200">
+                            <span class="font-bold text-slate-800 mb-2 block text-sm">📝 Notes & Tips:</span>
+                            <ul class="space-y-1 pl-1">
+                                <template x-for="(note, nIndex) in posBlock.notes" :key="nIndex">
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-indigo-400 mt-0.5 text-sm">•</span>
+                                        <span class="txt-note-en" x-text="note"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div x-show="!customData && !isGenerating" class="text-center py-12 bg-white border-2 border-dashed border-slate-200 rounded-2xl">
+                <div class="text-5xl mb-4">🪹</div>
+                <h3 class="text-slate-800 text-xl font-bold mb-2">No Brain Anchors yet.</h3>
+                <p class="text-slate-500 text-sm mb-6 max-w-md mx-auto">Use the AI Auto-Fill to generate a rich, bilingual profile, or import your legacy Google Sheets JSON.</p>
+                <button @click="fillWithAI()" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl shadow-md hover:bg-indigo-700 transition">
+                    Generate Profile
+                </button>
+            </div>
+
+            <div x-show="isEditing" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-sm" x-cloak>
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col h-[85vh] m-4 animate-fade-in-up">
+                    <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                        <h3 class="font-black text-slate-800">✏️ Raw JSON Editor</h3>
+                        <button @click="isEditing = false" class="text-slate-400 hover:text-rose-500 font-bold px-2 py-1">Close ✕</button>
+                    </div>
+                    <div class="flex-grow p-4 bg-slate-900">
+                        <textarea x-model="rawEditorContent" class="txt-note-en w-full h-full bg-slate-900 text-emerald-400 p-2 focus:outline-none resize-none" spellcheck="false"></textarea>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-b-2xl flex justify-between items-center border-t border-slate-200">
+                        <span class="text-xs text-slate-500 font-medium">Must be valid JSON formatting.</span>
+                        <button @click="saveManualEdits()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-8 rounded-lg shadow transition">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div x-data="typographyStudio()" @open-typography.window="isOpen = true">
+                <div x-show="isOpen" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[200] backdrop-blur-sm" x-cloak>
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col h-[85vh] m-4 animate-fade-in-up" @click.away="isOpen = false">
+                        
+                        <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex justify-between items-center rounded-t-2xl">
+                            <h3 class="font-black text-white text-lg flex items-center gap-2">🎨 Theme & Typography Studio</h3>
+                            <div class="flex items-center gap-4">
+                                <button @click="resetDefaults()" class="text-sm font-bold text-indigo-300 hover:text-white">Reset to Defaults</button>
+                                <button @click="isOpen = false" class="text-slate-400 hover:text-rose-500 font-bold text-xl px-2 py-1">✕</button>
+                            </div>
+                        </div>
+
+                        <div class="flex-grow overflow-y-auto p-6 bg-slate-50 flex flex-col gap-6">
+                            <p class="text-sm text-slate-500 bg-blue-50 border border-blue-100 p-3 rounded-lg">
+                                💡 <b>Pro Tip:</b> You can type <i>any</i> font installed on your PC into the "Font Family" box (e.g. <code>B Nazanin</code>, <code>"Times New Roman"</code>). It will render instantly.
+                            </p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {% macro font_controls(title, area, lang) %}
+                                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                    <h4 class="font-bold text-slate-700 uppercase tracking-widest text-xs mb-4 border-b border-slate-100 pb-2">{{ title }}</h4>
+                                    
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Font Family</label>
+                                    <input type="text" x-model="settings.{{area}}.{{lang}}.font" list="fonts-list-{{lang}}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 mb-4 outline-none">
+                                    
+                                    <div class="flex gap-4 mb-4">
+                                        <div class="flex-1">
+                                            <label class="block text-xs font-bold text-slate-500 mb-1">Size (px)</label>
+                                            <input type="number" x-model="settings.{{area}}.{{lang}}.size" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="block text-xs font-bold text-slate-500 mb-1">Weight</label>
+                                            <select x-model="settings.{{area}}.{{lang}}.weight" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                <option value="400">Regular (400)</option>
+                                                <option value="500">Medium (500)</option>
+                                                <option value="600">Semibold (600)</option>
+                                                <option value="700">Bold (700)</option>
+                                                <option value="900">Black (900)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center">
+                                        <input type="checkbox" id="{{area}}_{{lang}}_italic" x-model="settings.{{area}}.{{lang}}.italic" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500">
+                                        <label for="{{area}}_{{lang}}_italic" class="ml-2 text-sm font-medium text-slate-700">Enable Italic Style</label>
+                                    </div>
+                                </div>
+                                {% endmacro %}
+
+                                {{ font_controls('📚 Definitions (English)', 'def', 'en') }}
+                                {{ font_controls('📚 Definitions (Persian)', 'def', 'fa') }}
+                                
+                                {{ font_controls('💬 Examples (English)', 'ex', 'en') }}
+                                {{ font_controls('💬 Examples (Persian)', 'ex', 'fa') }}
+                                
+                                {{ font_controls('🔗 Relations (Synonyms/Colloc)', 'rel', 'en') }}
+                                {{ font_controls('🔗 Relations (Persian Support)', 'rel', 'fa') }}
+                                
+                                {{ font_controls('📝 Notes & Tips (English)', 'note', 'en') }}
+                                {{ font_controls('📝 Notes & Tips (Persian)', 'note', 'fa') }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <datalist id="fonts-list-en">
+                    <option value='"Segoe UI", system-ui, sans-serif'>Windows Default</option>
+                    <option value='Arial, sans-serif'>Arial</option>
+                    <option value='"Times New Roman", serif'>Times New Roman</option>
+                    <option value='"Courier New", monospace'>Courier New</option>
+                    <option value='Consolas, monospace'>Consolas</option>
+                </datalist>
+                <datalist id="fonts-list-fa">
+                    <option value='"Vazirmatn", Tahoma, sans-serif'>Vazirmatn</option>
+                    <option value='Tahoma, sans-serif'>Tahoma (Safe)</option>
+                    <option value='"B Nazanin", Tahoma, sans-serif'>B Nazanin</option>
+                    <option value='"B Roya", Tahoma, sans-serif'>B Roya</option>
+                    <option value='"IRANSans", Tahoma, sans-serif'>IRANSans</option>
+                </datalist>
+            </div>
+            </div>
+    </div>
 </div>
 
 <script>
-    // 1. YOUR EXACT ORIGINAL TOGGLE FUNCTIONALITY
+    // 1. ULTIMATE TYPOGRAPHY ENGINE
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('typographyStudio', () => ({
+            isOpen: false,
+            
+            // The master state containing all 32 variables
+            settings: {
+                def: {
+                    en: { font: '"Segoe UI", system-ui, sans-serif', size: 18, weight: '500', italic: false },
+                    fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 17, weight: '500', italic: false }
+                },
+                ex: {
+                    en: { font: '"Segoe UI", system-ui, sans-serif', size: 16, weight: '400', italic: true },
+                    fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false }
+                },
+                rel: {
+                    en: { font: '"Segoe UI", system-ui, sans-serif', size: 14, weight: '600', italic: false },
+                    fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 13, weight: '600', italic: false }
+                },
+                note: {
+                    en: { font: '"Segoe UI", system-ui, sans-serif', size: 15, weight: '400', italic: false },
+                    fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false }
+                }
+            },
+            
+            init() {
+                const saved = localStorage.getItem('empire_pro_typography_v3');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    for (const section in parsed) {
+                        for (const lang in parsed[section]) {
+                            this.settings[section][lang] = { ...this.settings[section][lang], ...parsed[section][lang] };
+                        }
+                    }
+                }
+                this.applyStyles();
+                this.$watch('settings', () => this.applyStyles(), { deep: true });
+            },
+
+            applyStyles() {
+                const root = document.documentElement;
+                for (const [section, langs] of Object.entries(this.settings)) {
+                    for (const [lang, props] of Object.entries(langs)) {
+                        root.style.setProperty(`--f-${section}-${lang}`, props.font);
+                        root.style.setProperty(`--s-${section}-${lang}`, props.size + 'px');
+                        root.style.setProperty(`--w-${section}-${lang}`, props.weight);
+                        root.style.setProperty(`--i-${section}-${lang}`, props.italic ? 'italic' : 'normal');
+                    }
+                }
+                localStorage.setItem('empire_pro_typography_v3', JSON.stringify(this.settings));
+            },
+
+            resetDefaults() {
+                this.settings = {
+                    def: { en: { font: '"Segoe UI", system-ui, sans-serif', size: 18, weight: '500', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 17, weight: '500', italic: false } },
+                    ex:  { en: { font: '"Segoe UI", system-ui, sans-serif', size: 16, weight: '400', italic: true }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false } },
+                    rel: { en: { font: '"Segoe UI", system-ui, sans-serif', size: 14, weight: '600', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 13, weight: '600', italic: false } },
+                    note:{ en: { font: '"Segoe UI", system-ui, sans-serif', size: 15, weight: '400', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false } }
+                };
+            }
+        }));
+    });
+
+    // 2. Local Definitions Frame Resizer
     window.manualToggle = function(dictName, btn) {
         const iframe = document.getElementById('iframe-' + dictName);
         const currentMode = btn.getAttribute('data-mode');
-        
-        // Flip the mode
         const newMode = (currentMode === 'full') ? 'pinned' : 'full';
-        
         if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({
-                type: 'setFilterMode',
-                mode: newMode
-            }, '*');
-            
-            // Update Button Visuals Explicitly
+            iframe.contentWindow.postMessage({ type: 'setFilterMode', mode: newMode }, '*');
             btn.setAttribute('data-mode', newMode);
             if (newMode === 'pinned') {
                 btn.innerText = '🔍 SHOW FULL ENTRY';
-                btn.style.backgroundColor = '#ffffff'; 
-                btn.style.color = '#1e293b';         
-                btn.style.borderColor = '#94a3b8';   
+                btn.style.backgroundColor = '#ffffff'; btn.style.color = '#1e293b'; btn.style.borderColor = '#94a3b8';   
             } else {
                 btn.innerText = '🎯 SHOW PINNED ONLY';
-                btn.style.backgroundColor = '#e0e7ff'; 
-                btn.style.color = '#3730a3';         
-                btn.style.borderColor = '#c7d2fe';   
+                btn.style.backgroundColor = '#e0e7ff'; btn.style.color = '#3730a3'; btn.style.borderColor = '#c7d2fe';   
             }
         }
     };
-
-    // 2. YOUR EXACT ORIGINAL IFRAME RESIZING LISTENER
     window.addEventListener('message', function(event) {
         if (event.data.type === 'resize') {
             const iframe = document.getElementById('iframe-' + event.data.dict);
@@ -183,75 +466,92 @@
         }
     });
 
-    // 3. NEW ALPINE.JS LOGIC FOR SYNONYMS/ANTONYMS
+    // 3. Data Engine (Synonyms & Brain Anchor)
     document.addEventListener('alpine:init', () => {
         Alpine.data('wordRelations', (wordId) => ({
             activeTab: 'definitions',
-            autoSynonyms: [], 
-            autoAntonyms: [],
-            manualSynonyms: [], 
-            manualAntonyms: [],
-            newSynonym: '', 
-            newAntonym: '',
-
-            init() {
-                this.fetchRelations();
-            },
-
+            autoSynonyms: [], autoAntonyms: [], manualSynonyms: [], manualAntonyms: [],
+            newSynonym: '', newAntonym: '',
+            init() { this.fetchRelations(); },
             async fetchRelations() {
                 try {
                     const res = await fetch(`/api/word/${wordId}/relations`);
                     const json = await res.json();
                     if (json.status === 'success') {
-                        this.autoSynonyms = json.data.auto_synonyms;
-                        this.autoAntonyms = json.data.auto_antonyms;
-                        this.manualSynonyms = json.data.manual_synonyms;
-                        this.manualAntonyms = json.data.manual_antonyms;
+                        this.autoSynonyms = json.data.auto_synonyms; this.autoAntonyms = json.data.auto_antonyms;
+                        this.manualSynonyms = json.data.manual_synonyms; this.manualAntonyms = json.data.manual_antonyms;
                     }
-                } catch (err) {
-                    console.error("Failed to fetch relations", err);
-                }
+                } catch (err) {}
             },
-
             async addRelation(type) {
                 const wordVal = type === 'synonym' ? this.newSynonym : this.newAntonym;
                 if (!wordVal.trim()) return;
-
                 try {
                     const res = await fetch(`/api/word/${wordId}/relations`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ type: type, word: wordVal })
                     });
                     const json = await res.json();
-                    
                     if (json.status === 'success') {
-                        if (type === 'synonym') {
-                            this.manualSynonyms.push({ id: json.id, word: json.word });
-                            this.newSynonym = '';
-                        } else {
-                            this.manualAntonyms.push({ id: json.id, word: json.word });
-                            this.newAntonym = '';
-                        }
+                        if (type === 'synonym') { this.manualSynonyms.push({ id: json.id, word: json.word }); this.newSynonym = ''; } 
+                        else { this.manualAntonyms.push({ id: json.id, word: json.word }); this.newAntonym = ''; }
                     }
-                } catch(err) {
-                    console.error("Failed to add relation", err);
-                }
+                } catch(err) {}
             },
-
             async deleteRelation(type, relId) {
                 try {
                     const res = await fetch(`/api/word/relations/${relId}?type=${type}`, { method: 'DELETE' });
                     if (res.ok) {
-                        if (type === 'synonym') {
-                            this.manualSynonyms = this.manualSynonyms.filter(s => s.id !== relId);
-                        } else {
-                            this.manualAntonyms = this.manualAntonyms.filter(a => a.id !== relId);
-                        }
+                        if (type === 'synonym') this.manualSynonyms = this.manualSynonyms.filter(s => s.id !== relId);
+                        else this.manualAntonyms = this.manualAntonyms.filter(a => a.id !== relId);
                     }
-                } catch(err) {
-                    console.error("Failed to delete relation", err);
-                }
+                } catch(err) {}
+            }
+        }));
+
+        Alpine.data('notesEngine', (wordId, initialData) => ({
+            wordId: wordId, customData: initialData,
+            isGenerating: false, isEditing: false, rawEditorContent: '',
+            async fillWithAI() {
+                this.isGenerating = true;
+                try {
+                    const res = await fetch(`/api/words/${this.wordId}/autofill`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.status === 'success') this.customData = data.data;
+                    else alert('AI Generation Failed: ' + data.message);
+                } catch (err) { alert('Network Error.'); } 
+                finally { this.isGenerating = false; }
+            },
+            async importJsonFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const formData = new FormData(); formData.append('file', file);
+                try {
+                    const res = await fetch(`/api/words/${this.wordId}/import`, { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (res.ok) { this.customData = data.data; alert("Data imported successfully!"); } 
+                    else alert("Import failed: " + data.error);
+                } catch (e) { alert("Network error during import."); }
+            },
+            openEditor() {
+                const template = [{
+                    "partOfSpeech": "noun", "ukPronunciation": "", "usPronunciation": "",
+                    "meanings": [{ "definition": "", "example": "", "translation": "", "mnemonic": "" }],
+                    "generalExamples": [], "synonyms": [], "antonyms": [], "collocations": [], "notes": [], "wordFamily": []
+                }];
+                this.rawEditorContent = JSON.stringify(this.customData || template, null, 4);
+                this.isEditing = true;
+            },
+            async saveManualEdits() {
+                try {
+                    const parsedData = JSON.parse(this.rawEditorContent);
+                    const res = await fetch(`/api/words/${this.wordId}/custom_data`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ custom_data: parsedData })
+                    });
+                    if (res.ok) { this.customData = parsedData; this.isEditing = false; }
+                    else alert('Failed to save manual edits to the database.');
+                } catch (e) { alert('Invalid JSON formatting! Please fix syntax errors before saving.'); }
             }
         }));
     });

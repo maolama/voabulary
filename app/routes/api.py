@@ -1,12 +1,16 @@
 import os
 import hashlib
-from flask import send_file, current_app
+from flask import send_file, current_app, request, jsonify, Response
 from ..services.tts import tts_manager
 from flask import Blueprint, request, render_template, jsonify, make_response
-from ..models import SavedWord, SavedSense
+from ..models import SavedWord, SavedSense, UserProfile
 from ..extensions import db, logger
 from app import dict_service # Import the global instance
 from ..models import ManualSynonym, ManualAntonym
+from datetime import datetime, date
+from sqlalchemy import func
+import json
+from ..llm.service import LLMService
 
 bp = Blueprint('api', __name__)
 
@@ -241,3 +245,119 @@ def delete_relation(rel_id):
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+
+@bp.route('/user/settings', methods=['POST'])
+def update_user_settings():
+    """Updates global settings and handles the Vacation Mode Time-Freeze Math."""
+    data = request.get_json()
+    profile = UserProfile.query.first()
+    if not profile:
+        return jsonify({"error": "Profile not found"}), 404
+
+    # 1. Update Daily Limits
+    if 'daily_review_limit' in data:
+        profile.daily_review_limit = data['daily_review_limit']
+
+    # 2. Handle The Magical Greenhouse Time Freeze
+    if 'vacation_mode' in data:
+        is_turning_on = data['vacation_mode'] and not profile.vacation_mode
+        is_turning_off = not data['vacation_mode'] and profile.vacation_mode
+
+        if is_turning_on:
+            # Lock the greenhouse doors and record the exact date we left
+            profile.vacation_mode = True
+            profile.vacation_start_date = date.today()
+            
+        elif is_turning_off:
+            # Unlock the doors and shift all dates forward
+            profile.vacation_mode = False
+            
+            if profile.vacation_start_date:
+                days_away = (date.today() - profile.vacation_start_date).days
+                
+                if days_away > 0:
+                    # Shift EVERY word's review date forward to perfectly preserve the FSRS intervals
+                    # SQLite syntax using func.date modifier
+                    from sqlalchemy import func
+                    db.session.query(SavedWord).update({
+                        SavedWord.next_review_date: func.date(SavedWord.next_review_date, f'+{days_away} days')
+                    }, synchronize_session=False)
+                    
+                    print(f"🪴 [GREENHOUSE] Shifted all plants forward by {days_away} days!")
+                    
+            profile.vacation_start_date = None
+
+    db.session.commit()
+    return jsonify({"status": "success", "vacation_mode": profile.vacation_mode})
+
+@bp.route('/words/<int:word_id>/reschedule', methods=['POST'])
+def reschedule_word(word_id):
+    """The backend for Manual Date Editing (Drag & Drop)."""
+    data = request.get_json()
+    new_date_str = data.get('next_review_date') # Expected format: YYYY-MM-DD
+    
+    word = SavedWord.query.get_or_404(word_id)
+    
+    try:
+        new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+        word.next_review_date = new_date
+        db.session.commit()
+        return jsonify({"status": "success", "new_date": str(word.next_review_date)})
+    except ValueError:
+        return jsonify({"error": "Invalid date format"}), 400
+    
+
+@bp.route('/words/<int:word_id>/autofill', methods=['POST'])
+def autofill_word(word_id):
+    """Triggers the LLM to generate a custom profile."""
+    word = SavedWord.query.get_or_404(word_id)
+    try:
+        ai_data = LLMService.generate_word_profile(word.word)
+        word.custom_data = ai_data
+        db.session.commit()
+        return jsonify({'status': 'success', 'data': ai_data})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@bp.route('/words/<int:word_id>/custom_data', methods=['POST'])
+def save_custom_data(word_id):
+    """Saves manual edits made by the user."""
+    word = SavedWord.query.get_or_404(word_id)
+    new_data = request.json.get('custom_data')
+    if new_data is not None:
+        word.custom_data = new_data
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+
+@bp.route('/words/<int:word_id>/export', methods=['GET'])
+def export_word_json(word_id):
+    """Downloads the custom data as a JSON file."""
+    word = SavedWord.query.get_or_404(word_id)
+    if not word.custom_data:
+        return jsonify({'error': 'No custom data exists for this word.'}), 404
+        
+    export_payload = {"word": word.word, "custom_data": word.custom_data}
+    return Response(
+        json.dumps(export_payload, indent=4),
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment;filename={word.word}_profile.json'}
+    )
+
+@bp.route('/words/<int:word_id>/import', methods=['POST'])
+def import_word_json(word_id):
+    """Accepts a JSON file upload and overwrites the word's custom data."""
+    word = SavedWord.query.get_or_404(word_id)
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+        
+    try:
+        data = json.load(request.files['file'])
+        if 'custom_data' in data:
+            word.custom_data = data['custom_data']
+            db.session.commit()
+            return jsonify({'status': 'success', 'data': word.custom_data})
+        return jsonify({'error': 'Missing custom_data key in JSON'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Failed to parse JSON: {str(e)}'}), 500

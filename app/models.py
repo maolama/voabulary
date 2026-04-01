@@ -63,6 +63,19 @@ class SavedWord(db.Model):
     # Remembers the last challenge you faced so we can cycle through modes dynamically
     last_mode_played = db.Column(db.String(50), nullable=True)
 
+    # Add this inside the SavedWord class:
+    custom_data = db.Column(db.JSON, nullable=True)
+
+    @property
+    def growth_stage(self):
+        """Returns the Memrise-style growth stage based on mastery level."""
+        if self.mastery_level <= 3:
+            return "seedling" # Planting phase
+        elif self.mastery_level <= 6:
+            return "growing"  # Watering phase
+        else:
+            return "blooming" # Forging/Mastery phase
+
 
 # ==========================================
 # The Pinned Dictionary Snippets Model
@@ -108,6 +121,23 @@ class UserProfile(db.Model):
     current_streak = db.Column(db.Integer, default=0)
     longest_streak = db.Column(db.Integer, default=0)
     last_study_date = db.Column(db.Date, nullable=True)
+    
+    # ==========================================
+    # NEW: GARDEN METAPHOR SETTINGS & FORGIVENESS
+    # ==========================================
+    
+    # "Automated Sprinklers" (Streak Freezes/Passes)
+    # Earned through consistency; consumed automatically if you miss a day
+    sprinkler_tokens = db.Column(db.Integer, default=0) 
+    
+    # "The Magical Greenhouse" (Vacation Mode)
+    # When True, the FSRS engine treats time as 'frozen'
+    vacation_mode = db.Column(db.Boolean, default=False)
+    vacation_start_date = db.Column(db.Date, nullable=True)
+    
+    # "Watering Can Capacity" (Daily Review Limits)
+    # Prevents SRS exhaustion by capping max reviews per day
+    daily_review_limit = db.Column(db.Integer, default=50)
     
     def update_level(self):
         self.level = (self.total_xp // 100) + 1
