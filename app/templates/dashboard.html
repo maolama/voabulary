@@ -1,127 +1,538 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex items-center justify-between animate-fade-in-up">
-    <div class="flex items-center space-x-4">
-        <div class="bg-indigo-600 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black shadow-lg">
-            L{{ profile.level }}
-        </div>
-        <div>
-            <h1 class="text-2xl font-extrabold text-slate-900">Emperor of Vocabulary</h1>
-            <p class="text-slate-500 font-medium">Total XP: <span class="text-indigo-600 font-bold">{{ profile.total_xp }}</span></p>
-        </div>
-    </div>
-    
-    <div class="w-1/3">
-        <div class="flex justify-between text-xs font-bold text-slate-500 mb-1">
-            <span>Level {{ profile.level }}</span>
-            <span>Level {{ profile.level + 1 }}</span>
-        </div>
-        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-            <div class="bg-indigo-500 h-3 rounded-full" style="width: {{ (profile.total_xp % 100) }}%"></div>
-        </div>
-        <p class="text-right text-xs text-slate-400 mt-1">{{ 100 - (profile.total_xp % 100) }} XP to next level</p>
-    </div>
-</div>
+<div x-data="dashboardLogic()" class="h-full">
 
-<div class="bg-white rounded-2xl shadow-sm p-6 mb-8 border-t-4 border-emerald-500 animate-fade-in-up">
-    <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+    <div class="border-b border-slate-200 mb-6">
+        <nav class="-mb-px flex space-x-8">
+            <button @click="activeTab = 'overview'" 
+                    :class="activeTab === 'overview' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center gap-2">
+                📊 Overview
+            </button>
+            <button @click="activeTab = 'corpus'" 
+                    :class="activeTab === 'corpus' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center gap-2">
+                🗄️ Academic Corpus Explorer
+            </button>
+            <button @click="activeTab = 'analytics'" 
+                    :class="activeTab === 'analytics' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                    class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center gap-2">
+                📈 Corpus Analytics
+            </button>
+        </nav>
+    </div>
+
+    <div x-show="activeTab === 'overview'" x-transition.opacity.duration.300ms>
         
-        <div class="flex items-center gap-4 w-full md:w-1/3">
-            <div class="text-4xl drop-shadow-sm">💧</div>
-            <div class="flex-grow">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Watering Can</h3>
-                <p class="text-xl font-black text-blue-600">
-                    {{ remaining_capacity }} <span class="text-sm font-medium text-slate-400">/ {{ profile.daily_review_limit or 50 }} drops left</span>
-                </p>
-                <div class="w-full bg-slate-100 rounded-full h-2 mt-2 overflow-hidden shadow-inner">
-                    <div class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: {{ (remaining_capacity / (profile.daily_review_limit or 50)) * 100 }}%"></div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex items-center justify-between animate-fade-in-up">
+            <div class="flex items-center space-x-4">
+                <div class="bg-indigo-600 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black shadow-lg">
+                    L{{ profile.level }}
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-slate-900">Emperor of Vocabulary</h1>
+                    <p class="text-slate-500 font-medium">Total XP: <span class="text-indigo-600 font-bold">{{ profile.total_xp }}</span></p>
                 </div>
             </div>
-        </div>
-
-        <div class="flex items-center gap-4 px-6 w-full md:w-1/3 md:border-x md:border-slate-100">
-            <div class="text-4xl drop-shadow-sm">🚿</div>
-            <div>
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Sprinklers</h3>
-                <p class="text-xl font-black text-emerald-600">
-                    {{ profile.sprinkler_tokens or 0 }} <span class="text-sm font-medium text-slate-400">Ready</span>
-                </p>
-                <p class="text-xs text-slate-400 mt-1 font-medium">Saves your streak if missed</p>
+            
+            <div class="w-1/3">
+                <div class="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                    <span>Level {{ profile.level }}</span>
+                    <span>Level {{ profile.level + 1 }}</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                    <div class="bg-indigo-500 h-3 rounded-full" style="width: {{ (profile.total_xp % 100) }}%"></div>
+                </div>
+                <p class="text-right text-xs text-slate-400 mt-1">{{ 100 - (profile.total_xp % 100) }} XP to next level</p>
             </div>
         </div>
 
-        <div class="flex items-center gap-4 w-full md:w-1/3 pl-0 md:pl-6">
-            <div class="text-4xl drop-shadow-sm">🪴</div>
-            <div>
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Greenhouse</h3>
-                <label class="relative inline-flex items-center cursor-pointer mt-1">
-                    <input type="checkbox" id="vacationToggle" class="sr-only peer" {% if profile.vacation_mode %}checked{% endif %}>
-                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner"></div>
-                    <span class="ml-3 text-sm font-bold text-slate-700" id="vacationStatusText">
-                        {% if profile.vacation_mode %}Active (Time Frozen){% else %}Off{% endif %}
-                    </span>
-                </label>
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-8 border-t-4 border-emerald-500 animate-fade-in-up">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                
+                <div class="flex items-center gap-4 w-full md:w-1/3">
+                    <div class="text-4xl drop-shadow-sm">💧</div>
+                    <div class="flex-grow">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Watering Can</h3>
+                        <p class="text-xl font-black text-blue-600">
+                            {{ remaining_capacity }} <span class="text-sm font-medium text-slate-400">/ {{ profile.daily_review_limit or 50 }} drops left</span>
+                        </p>
+                        <div class="w-full bg-slate-100 rounded-full h-2 mt-2 overflow-hidden shadow-inner">
+                            <div class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: {{ (remaining_capacity / (profile.daily_review_limit or 50)) * 100 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 px-6 w-full md:w-1/3 md:border-x md:border-slate-100">
+                    <div class="text-4xl drop-shadow-sm">🚿</div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Sprinklers</h3>
+                        <p class="text-xl font-black text-emerald-600">
+                            {{ profile.sprinkler_tokens or 0 }} <span class="text-sm font-medium text-slate-400">Ready</span>
+                        </p>
+                        <p class="text-xs text-slate-400 mt-1 font-medium">Saves your streak if missed</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 w-full md:w-1/3 pl-0 md:pl-6">
+                    <div class="text-4xl drop-shadow-sm">🪴</div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Greenhouse</h3>
+                        <label class="relative inline-flex items-center cursor-pointer mt-1">
+                            <input type="checkbox" x-model="vacationMode" @change="toggleVacation()" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner"></div>
+                            <span class="ml-3 text-sm font-bold text-slate-700" x-text="vacationMode ? 'Active (Time Frozen)' : 'Off'"></span>
+                        </label>
+                    </div>
+                </div>
+
             </div>
         </div>
 
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8 overflow-hidden animate-fade-in-up">
+            <h2 class="text-lg font-bold text-slate-800 mb-4">Study Activity (Last 365 Days)</h2>
+            <div class="flex space-x-1 overflow-x-auto pb-4" style="writing-mode: vertical-lr; height: 140px;">
+                {% for day in heatmap %}
+                    <div class="w-3 h-3 rounded-sm
+                        {% if day.intensity == 0 %} bg-slate-100
+                        {% elif day.intensity == 1 %} bg-emerald-200
+                        {% elif day.intensity == 2 %} bg-emerald-400
+                        {% elif day.intensity == 3 %} bg-emerald-600
+                        {% else %} bg-emerald-800 {% endif %}"
+                        title="{{ day.date }}: {{ day.count }} actions">
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if due_today > 0 or overdue > 0 %}
+        <div class="bg-rose-50 rounded-2xl p-8 border border-rose-100 flex justify-between items-center animate-fade-in-up">
+            <div>
+                <h2 class="text-2xl font-bold text-rose-900 mb-2">{{ due_today + overdue }} words require your attention!</h2>
+                <p class="text-rose-600">Reviewing builds your streak and earns major XP.</p>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <a href="/planner" class="bg-white text-slate-700 border-2 border-slate-200 font-bold py-4 px-8 rounded-full shadow-sm hover:border-indigo-300 hover:bg-indigo-50 transition transform hover:scale-105">
+                    🗓️ Manage Schedule
+                </a>
+
+                {% if remaining_capacity > 0 and not profile.vacation_mode %}
+                    <a href="/dojo" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 px-10 rounded-full shadow-lg transition transform hover:scale-105">
+                        Battle Now ⚔️
+                    </a>
+                {% else %}
+                    <button disabled class="bg-slate-300 text-slate-500 font-bold py-4 px-10 rounded-full shadow cursor-not-allowed">
+                        {% if profile.vacation_mode %}Greenhouse Active 🪴{% else %}Watering Can Empty 💧{% endif %}
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
+
+    <div x-show="activeTab === 'corpus'" x-cloak class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[750px] animate-fade-in-up overflow-hidden relative">
+        <div class="flex-1 grid grid-cols-12 divide-x divide-slate-200 min-h-0">
+            <div class="col-span-4 bg-slate-50 flex flex-col h-full min-h-0">
+                <div class="p-5 border-b border-slate-200 shrink-0">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">1. Select an Exam</p>
+                    
+                    <select x-model="selectedExamType" @change="examTypeChanged()" class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none mb-3 font-bold shadow-sm">
+                        <option value="" disabled>Choose Category...</option>
+                        <template x-for="type in hierarchy" :key="type.id">
+                            <option :value="type.id" x-text="type.name"></option>
+                        </template>
+                    </select>
+
+                    <select x-model="selectedExam" @change="fetchSections(1)" :disabled="!selectedExamType" class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none font-medium shadow-sm disabled:opacity-50 disabled:bg-slate-100">
+                        <option value="" disabled>Choose Exam...</option>
+                        <template x-for="exam in availableExams" :key="exam.id">
+                            <option :value="exam.id" x-text="exam.name"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-3 relative min-h-0">
+                    <div x-show="loadingSections" class="absolute inset-0 bg-slate-50/80 flex items-center justify-center z-10 backdrop-blur-sm">
+                        <svg class="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </div>
+
+                    <template x-if="sectionData.sections && sectionData.sections.length === 0 && selectedExam">
+                        <div class="text-center py-8 text-slate-400 text-sm font-medium">No passages found.</div>
+                    </template>
+
+                    <ul class="space-y-1">
+                        <template x-for="sec in sectionData.sections" :key="sec.id">
+                            <li>
+                                <button @click="fetchPassageText(sec.id, sec.name)" 
+                                        class="w-full text-left px-4 py-3 rounded-xl text-sm transition-all duration-200 flex flex-col justify-center border"
+                                        :class="selectedSectionId === sec.id ? 'bg-indigo-100 text-indigo-900 font-bold border-indigo-200 shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900 border-transparent hover:border-slate-200 hover:shadow-sm'">
+                                    <span class="truncate block w-full" x-text="sec.name"></span>
+                                    <span class="text-[10px] uppercase tracking-widest mt-1" 
+                                          :class="selectedSectionId === sec.id ? 'text-indigo-500' : 'text-slate-400'" 
+                                          x-show="sec.difficulty" x-text="`Difficulty: ${sec.difficulty}`"></span>
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+
+                <div x-show="sectionData.total_pages > 1" class="p-3 border-t border-slate-200 shrink-0 bg-white flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <button @click="fetchSections(sectionData.current_page - 1)" :disabled="sectionData.current_page === 1" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold disabled:opacity-50 text-slate-600 transition">Prev</button>
+                    <span class="text-xs font-bold text-slate-500">Page <span x-text="sectionData.current_page"></span> / <span x-text="sectionData.total_pages"></span></span>
+                    <button @click="fetchSections(sectionData.current_page + 1)" :disabled="sectionData.current_page === sectionData.total_pages" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold disabled:opacity-50 text-slate-600 transition">Next</button>
+                </div>
+            </div>
+
+            <div class="col-span-8 bg-white h-full flex flex-col relative min-h-0">
+                <div x-show="loadingText" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10 backdrop-blur-sm">
+                    <svg class="animate-spin h-10 w-10 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                </div>
+
+                <template x-if="!activePassageText && !loadingText">
+                    <div class="flex-1 flex flex-col items-center justify-center text-slate-300">
+                        <div class="text-6xl mb-4 opacity-50">📄</div>
+                        <p class="font-medium text-sm">Select a passage from the directory to start reading.</p>
+                    </div>
+                </template>
+
+                <template x-if="activePassageText">
+                    <div class="flex flex-col h-full min-h-0 w-full relative">
+                        <div class="px-8 py-5 border-b border-slate-100 bg-white shrink-0 z-20 shadow-sm flex flex-col gap-3">
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-2xl font-serif font-black text-slate-800 truncate" x-text="activePassageName"></h3>
+                                <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-lg border border-indigo-100 shrink-0" x-text="selectedExamTypeName"></span>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-center gap-4 bg-slate-50 border border-slate-200 px-4 py-2 rounded-lg">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Font</label>
+                                    <input type="text" x-model="settings.font" list="corp-fonts" class="w-40 text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500">
+                                    <datalist id="corp-fonts">
+                                        <option value='"Times New Roman", Times, serif'>Times New Roman</option>
+                                        <option value='Georgia, serif'>Georgia</option>
+                                        <option value='"Segoe UI", system-ui, sans-serif'>Segoe UI</option>
+                                        <option value='Arial, sans-serif'>Arial</option>
+                                        <option value='Consolas, monospace'>Consolas</option>
+                                    </datalist>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Size</label>
+                                    <input type="number" x-model="settings.size" class="w-16 text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Weight</label>
+                                    <select x-model="settings.weight" class="w-28 text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500">
+                                        <option value="400">Regular</option>
+                                        <option value="500">Medium</option>
+                                        <option value="600">Semibold</option>
+                                        <option value="700">Bold</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center gap-2 ml-2 border-l border-slate-300 pl-4">
+                                    <input type="checkbox" id="corpus_italic" x-model="settings.italic" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500">
+                                    <label for="corpus_italic" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Italic</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto bg-[#faf9f6] p-10 min-h-0">
+                            <div class="max-w-3xl mx-auto pb-10">
+                                <p class="whitespace-pre-wrap leading-[2.2] tracking-wide text-slate-800" 
+                                   :style="`font-family: ${settings.font}; font-size: ${settings.size}px; font-weight: ${settings.weight}; font-style: ${settings.italic ? 'italic' : 'normal'};`"
+                                   @click="handleWordClick($event)"
+                                   x-html="renderClickableText(activePassageText)"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="activeTab === 'analytics'" x-cloak class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[750px] animate-fade-in-up overflow-hidden relative">
+        {% include '_corpus_analytics.html' %}
+    </div>
+
+    <div x-show="dictionaryModalOpen" class="absolute inset-0 z-[300] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div @click.away="closeDictionaryPopup()" x-transition.opacity x-transition:enter-start="scale-95" x-transition:enter-end="scale-100"
+             class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl h-[85vh] flex flex-col m-4 overflow-hidden border border-slate-200 relative">
+            
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 shadow-sm z-10">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">📖</span>
+                    <div class="flex flex-col">
+                        <form @submit.prevent="openDictionaryPopup(selectedWord)" class="flex items-center gap-2 bg-white border border-slate-300 rounded px-2 py-0.5 shadow-inner focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all">
+                            <input type="text" x-model="selectedWord" class="font-black text-slate-800 text-xl tracking-tight bg-transparent border-none outline-none w-48 focus:ring-0 p-0 m-0">
+                            <button type="submit" class="text-slate-400 hover:text-indigo-600 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </button>
+                        </form>
+                        <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">Dictionary Archives</p>
+                    </div>
+                </div>
+                <button @click="closeDictionaryPopup()" class="bg-slate-200 hover:bg-rose-100 text-slate-500 hover:text-rose-600 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                    <span class="font-black text-lg">✕</span>
+                </button>
+            </div>
+            
+            <div class="flex-grow bg-slate-100 relative overflow-y-auto">
+                <div x-show="isDictLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-100/90 z-20 backdrop-blur-sm">
+                    <svg class="animate-spin h-10 w-10 text-indigo-600 mb-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <p class="text-sm font-bold text-slate-500 animate-pulse">Consulting Empire Archives...</p>
+                </div>
+                <div id="modal-dict-content" class="p-6"></div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
-document.getElementById('vacationToggle').addEventListener('change', async function(e) {
-    const isChecked = e.target.checked;
-    document.getElementById('vacationStatusText').innerText = isChecked ? 'Active (Time Frozen)' : 'Off';
+window.manualToggle = function(dictName, btn) {
+    const iframe = document.getElementById('iframe-' + dictName);
+    const currentMode = btn.getAttribute('data-mode');
+    const newMode = (currentMode === 'full') ? 'pinned' : 'full';
     
-    await fetch('/api/user/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vacation_mode: isChecked })
-    });
-    
-    // Auto refresh so the "Battle Now" button disables/enables properly
-    window.location.reload(); 
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'setFilterMode', mode: newMode }, '*');
+        btn.setAttribute('data-mode', newMode);
+        if (newMode === 'pinned') {
+            btn.innerText = '🔍 SHOW FULL ENTRY';
+            btn.style.backgroundColor = '#ffffff'; btn.style.color = '#1e293b'; btn.style.borderColor = '#94a3b8';   
+        } else {
+            btn.innerText = '🎯 SHOW PINNED ONLY';
+            btn.style.backgroundColor = '#e0e7ff'; btn.style.color = '#3730a3'; btn.style.borderColor = '#c7d2fe';   
+        }
+    }
+};
+
+window.addEventListener('message', function(event) {
+    if (event.data.type === 'resize') {
+        const iframe = document.getElementById('iframe-' + event.data.dict);
+        if (iframe) {
+            setTimeout(() => { iframe.style.height = (event.data.height + 50) + 'px'; }, 50);
+        }
+    }
+});
+
+document.addEventListener('alpine:init', () => {
+    Alpine.data('dashboardLogic', () => ({
+        activeTab: 'overview',
+        vacationMode: {{ 'true' if profile.vacation_mode else 'false' }},
+
+        // Corpus Explorer State
+        hierarchy: [],
+        availableExams: [],
+        selectedExamType: '',
+        selectedExamTypeName: '',
+        selectedExam: '',
+        selectedSectionId: null,
+        sectionData: { sections: [], current_page: 1, total_pages: 1 },
+        loadingSections: false,
+        activePassageName: '',
+        activePassageText: null,
+        loadingText: false,
+
+        // NEW: Analytics & Frequency State
+        analyticsSubjects: [],
+        analyticsHierarchy: [],
+        analyticsAvailableExams: [],
+        analyticsFilters: {
+            subject_id: '',
+            exam_type_id: '',
+            exam_id: ''
+        },
+        analyticsData: { words: [], current_page: 1, total_pages: 1, total_items: 0 },
+        loadingAnalytics: false,
+
+        // Dictionary State
+        dictionaryModalOpen: false,
+        selectedWord: '',
+        isDictLoading: false,
+
+        settings: {
+            font: '"Times New Roman", Times, serif', size: 18, weight: '400', italic: false
+        },
+
+        init() {
+            this.fetchHierarchy();
+            this.fetchAnalyticsFilters();
+            this.fetchFrequencies(1);
+            
+            const savedTheme = localStorage.getItem('empire_dashboard_theme');
+            if (savedTheme) this.settings = { ...this.settings, ...JSON.parse(savedTheme) };
+
+            this.$watch('settings', (val) => {
+                localStorage.setItem('empire_dashboard_theme', JSON.stringify(val));
+            }, { deep: true });
+        },
+
+        async toggleVacation() {
+            await fetch('/api/user/settings', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vacation_mode: this.vacationMode })
+            });
+            window.location.reload(); 
+        },
+
+        // --- EXPLORER API ---
+        async fetchHierarchy() {
+            try {
+                const res = await fetch('/api/corpus/explorer/hierarchy');
+                const json = await res.json();
+                if (json.status === 'success') this.hierarchy = json.data;
+            } catch (e) {}
+        },
+
+        examTypeChanged() {
+            this.selectedExam = '';
+            this.sectionData.sections = [];
+            this.activePassageText = null;
+            this.selectedSectionId = null;
+
+            const typeObj = this.hierarchy.find(t => t.id == this.selectedExamType);
+            if (typeObj) {
+                this.availableExams = typeObj.exams;
+                this.selectedExamTypeName = typeObj.name;
+            } else {
+                this.availableExams = [];
+                this.selectedExamTypeName = '';
+            }
+        },
+
+        async fetchSections(page) {
+            if (!this.selectedExam) return;
+            this.loadingSections = true;
+            try {
+                const res = await fetch(`/api/corpus/explorer/sections?exam_id=${this.selectedExam}&page=${page}`);
+                const json = await res.json();
+                if (json.status === 'success') this.sectionData = json.data;
+            } catch (e) {}
+            finally { this.loadingSections = false; }
+        },
+
+        async fetchPassageText(sectionId, sectionName) {
+            this.selectedSectionId = sectionId;
+            this.activePassageName = sectionName;
+            this.loadingText = true;
+            try {
+                const res = await fetch(`/api/corpus/passage/${sectionId}`);
+                const json = await res.json();
+                if (json.status === 'success' && json.data.sentences.length > 0) {
+                    this.activePassageText = json.data.sentences[0].text;
+                }
+            } catch (e) {}
+            finally { this.loadingText = false; }
+        },
+
+        // --- ANALYTICS API (NEW) ---
+        async fetchAnalyticsFilters() {
+            try {
+                const res = await fetch('/api/corpus/analytics/filters');
+                const json = await res.json();
+                if (json.status === 'success') {
+                    this.analyticsSubjects = json.data.subjects;
+                    this.analyticsHierarchy = json.data.hierarchy;
+                }
+            } catch (e) {}
+        },
+
+        analyticsExamTypeChanged() {
+            this.analyticsFilters.exam_id = '';
+            const typeObj = this.analyticsHierarchy.find(t => t.id == this.analyticsFilters.exam_type_id);
+            this.analyticsAvailableExams = typeObj ? typeObj.exams : [];
+            this.fetchFrequencies(1);
+        },
+
+        resetAnalyticsFilters() {
+            this.analyticsFilters = { subject_id: '', exam_type_id: '', exam_id: '' };
+            this.analyticsAvailableExams = [];
+            this.fetchFrequencies(1);
+        },
+
+        async fetchFrequencies(page) {
+            this.loadingAnalytics = true;
+            try {
+                const queryParams = new URLSearchParams({
+                    page: page,
+                    subject_id: this.analyticsFilters.subject_id,
+                    exam_type_id: this.analyticsFilters.exam_type_id,
+                    exam_id: this.analyticsFilters.exam_id
+                });
+                const res = await fetch(`/api/corpus/analytics/frequencies?${queryParams.toString()}`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    this.analyticsData = json.data;
+                }
+            } catch (e) {}
+            finally { this.loadingAnalytics = false; }
+        },
+
+        // --- DICTIONARY API ---
+        renderClickableText(text) {
+            if (!text) return '';
+            return text.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, '<span class="clickable-word cursor-pointer hover:bg-indigo-100 hover:text-indigo-800 rounded px-0.5 transition-colors">$1</span>');
+        },
+
+        async handleWordClick(event) {
+            if (event.target.tagName.toLowerCase() === 'span' && event.target.classList.contains('clickable-word')) {
+                const rawWord = event.target.innerText.trim();
+                const cleanWord = rawWord.replace(/[^a-zA-Z]/g, '').toLowerCase(); 
+                
+                if (cleanWord) {
+                    this.dictionaryModalOpen = true;
+                    this.isDictLoading = true;
+                    this.selectedWord = cleanWord;
+                    
+                    let finalWord = cleanWord;
+                    try {
+                        const res = await fetch(`/api/corpus/lemma?word=${cleanWord}`);
+                        const json = await res.json();
+                        if (json.status === 'success' && json.lemma) finalWord = json.lemma;
+                    } catch (e) { }
+                    
+                    this.openDictionaryPopup(finalWord);
+                }
+            }
+        },
+
+        async openDictionaryPopup(word) {
+            this.selectedWord = word.toLowerCase();
+            this.dictionaryModalOpen = true;
+            this.isDictLoading = true;
+            
+            const contentDiv = document.getElementById('modal-dict-content');
+            contentDiv.innerHTML = '';
+
+            try {
+                const formData = new FormData();
+                formData.append('query', this.selectedWord);
+
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const html = await response.text();
+                contentDiv.innerHTML = html;
+                
+                if (window.htmx) htmx.process(contentDiv);
+            } catch (error) {
+                contentDiv.innerHTML = '<p class="text-center text-rose-500 mt-10 font-bold">Failed to load dictionary.</p>';
+            } finally {
+                this.isDictLoading = false;
+            }
+        },
+
+        closeDictionaryPopup() {
+            this.dictionaryModalOpen = false;
+            this.selectedWord = '';
+            setTimeout(() => { document.getElementById('modal-dict-content').innerHTML = ''; }, 300);
+        }
+    }));
 });
 </script>
 
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8 overflow-hidden animate-fade-in-up">
-    <h2 class="text-lg font-bold text-slate-800 mb-4">Study Activity (Last 365 Days)</h2>
-    <div class="flex space-x-1 overflow-x-auto pb-4" style="writing-mode: vertical-lr; height: 140px;">
-        {% for day in heatmap %}
-            <div class="w-3 h-3 rounded-sm
-                {% if day.intensity == 0 %} bg-slate-100
-                {% elif day.intensity == 1 %} bg-emerald-200
-                {% elif day.intensity == 2 %} bg-emerald-400
-                {% elif day.intensity == 3 %} bg-emerald-600
-                {% else %} bg-emerald-800 {% endif %}"
-                title="{{ day.date }}: {{ day.count }} actions">
-            </div>
-        {% endfor %}
-    </div>
-</div>
-
-{% if due_today > 0 or overdue > 0 %}
-<div class="bg-rose-50 rounded-2xl p-8 border border-rose-100 flex justify-between items-center">
-    <div>
-        <h2 class="text-2xl font-bold text-rose-900 mb-2">{{ due_today + overdue }} words require your attention!</h2>
-        <p class="text-rose-600">Reviewing builds your streak and earns major XP.</p>
-    </div>
-    
-    <div class="flex items-center space-x-4">
-        <a href="/planner" class="bg-white text-slate-700 border-2 border-slate-200 font-bold py-4 px-8 rounded-full shadow-sm hover:border-indigo-300 hover:bg-indigo-50 transition transform hover:scale-105">
-            🗓️ Manage Schedule
-        </a>
-
-        {% if remaining_capacity > 0 and not profile.vacation_mode %}
-            <a href="/dojo" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 px-10 rounded-full shadow-lg transition transform hover:scale-105">
-                Battle Now ⚔️
-            </a>
-        {% else %}
-            <button disabled class="bg-slate-300 text-slate-500 font-bold py-4 px-10 rounded-full shadow cursor-not-allowed">
-                {% if profile.vacation_mode %}Greenhouse Active 🪴{% else %}Watering Can Empty 💧{% endif %}
-            </button>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
 {% endblock %}

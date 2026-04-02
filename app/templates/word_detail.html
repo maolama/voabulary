@@ -3,378 +3,391 @@
 
 <style>
     :root {
-        /* Optimal Readability Defaults (Segoe UI + Vazirmatn/Tahoma) */
-        
-        /* 1. Definitions (Large, Medium-Weight anchoring text) */
         --f-def-en: "Segoe UI", system-ui, sans-serif; --s-def-en: 18px; --w-def-en: 500; --i-def-en: normal;
         --f-def-fa: "Vazirmatn", Tahoma, sans-serif;   --s-def-fa: 17px; --w-def-fa: 500; --i-def-fa: normal;
         
-        /* 2. Examples (Slightly smaller, regular weight. English is Italicized) */
         --f-ex-en: "Segoe UI", system-ui, sans-serif;  --s-ex-en: 16px; --w-ex-en: 400; --i-ex-en: italic;
         --f-ex-fa: "Vazirmatn", Tahoma, sans-serif;    --s-ex-fa: 15px; --w-ex-fa: 400; --i-ex-fa: normal;
         
-        /* 3. Relations/Tags (Small, punchy, semibold) */
         --f-rel-en: "Segoe UI", system-ui, sans-serif; --s-rel-en: 14px; --w-rel-en: 600; --i-rel-en: normal;
         --f-rel-fa: "Vazirmatn", Tahoma, sans-serif;   --s-rel-fa: 13px; --w-rel-fa: 600; --i-rel-fa: normal;
         
-        /* 4. Notes & Tips (Standard reading text) */
         --f-note-en: "Segoe UI", system-ui, sans-serif;--s-note-en: 15px; --w-note-en: 400; --i-note-en: normal;
         --f-note-fa: "Vazirmatn", Tahoma, sans-serif;  --s-note-fa: 15px; --w-note-fa: 400; --i-note-fa: normal;
+
+        --f-corp-en: "Times New Roman", Times, serif;  --s-corp-en: 17px; --w-corp-en: 400; --i-corp-en: normal;
     }
 
-    /* Semantic Typography Classes */
     .txt-def-en  { font-family: var(--f-def-en) !important;  font-size: var(--s-def-en) !important;  font-weight: var(--w-def-en) !important; font-style: var(--i-def-en) !important; }
     .txt-def-fa  { font-family: var(--f-def-fa) !important;  font-size: var(--s-def-fa) !important;  font-weight: var(--w-def-fa) !important; font-style: var(--i-def-fa) !important; line-height: 1.7; }
-    
     .txt-ex-en   { font-family: var(--f-ex-en) !important;   font-size: var(--s-ex-en) !important;   font-weight: var(--w-ex-en) !important; font-style: var(--i-ex-en) !important; }
     .txt-ex-fa   { font-family: var(--f-ex-fa) !important;   font-size: var(--s-ex-fa) !important;   font-weight: var(--w-ex-fa) !important; font-style: var(--i-ex-fa) !important; line-height: 1.7; }
-    
     .txt-rel-en  { font-family: var(--f-rel-en) !important;  font-size: var(--s-rel-en) !important;  font-weight: var(--w-rel-en) !important; font-style: var(--i-rel-en) !important; }
     .txt-rel-fa  { font-family: var(--f-rel-fa) !important;  font-size: var(--s-rel-fa) !important;  font-weight: var(--w-rel-fa) !important; font-style: var(--i-rel-fa) !important; }
-    
     .txt-note-en { font-family: var(--f-note-en) !important; font-size: var(--s-note-en) !important; font-weight: var(--w-note-en) !important; font-style: var(--i-note-en) !important; }
     .txt-note-fa { font-family: var(--f-note-fa) !important; font-size: var(--s-note-fa) !important; font-weight: var(--w-note-fa) !important; font-style: var(--i-note-fa) !important; line-height: 1.7; }
+    .txt-corp-en { font-family: var(--f-corp-en) !important; font-size: var(--s-corp-en) !important; font-weight: var(--w-corp-en) !important; font-style: var(--i-corp-en) !important; line-height: 1.6; }
 
-    /* General English fallback for UI wrappers */
+    .highlight-word { background-color: #fef08a; font-weight: bold; color: #854d0e; padding: 0 4px; border-radius: 4px; }
     .vocab-app-wrapper { font-family: "Segoe UI", system-ui, sans-serif; }
 </style>
 
-<div class="max-w-4xl mx-auto mt-8 vocab-app-wrapper" x-data="wordRelations({{ word.id }})">
-    <div class="mb-4">
-        <a href="/words" class="text-indigo-600 hover:underline">&larr; Back to Archive</a>
-    </div>
+<script id="safedata-word" type="application/json">{{ word.word | tojson | safe }}</script>
+<script id="safedata-custom" type="application/json">{{ word.custom_data | tojson | safe if word.custom_data else 'null' }}</script>
+
+<div x-data="wordRelations({{ word.id }}, JSON.parse(document.getElementById('safedata-word').textContent))">
     
-    <div class="flex justify-between items-end mb-6">
-        <h1 class="text-5xl font-black text-slate-900">{{ word.word }}</h1>
-        <button onclick="window.playTTSAudio('{{ word.word }}')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-full shadow-sm transition-transform active:scale-95">
-            🔊 Listen
-        </button>
-    </div>
-
-    <div class="grid grid-cols-4 gap-4 mb-8">
-        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
-            <p class="text-xs text-slate-500 uppercase font-bold">Total Reviews</p>
-            <p class="text-2xl font-bold text-slate-800">{{ word.total_reviews }}</p>
-        </div>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
-            <p class="text-xs text-slate-500 uppercase font-bold">Current Streak</p>
-            <p class="text-2xl font-bold text-blue-600">{{ word.repetitions }}</p>
-        </div>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
-            <p class="text-xs text-slate-500 uppercase font-bold">Next Interval</p>
-            <p class="text-2xl font-bold text-emerald-600">{{ word.interval }} days</p>
-        </div>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
-            <p class="text-xs text-slate-500 uppercase font-bold">Ease Factor</p>
-            <p class="text-2xl font-bold text-amber-500">{{ "%.2f"|format(word.ease_factor) }}</p>
-        </div>
-    </div>
-
-    <div class="border-b border-slate-200 mb-6">
-        <nav class="-mb-px flex space-x-8">
-            <button @click="activeTab = 'definitions'" 
-                    :class="activeTab === 'definitions' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
-                    class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition">
-                📚 Local Definitions
-            </button>
-            <button @click="activeTab = 'relations'" 
-                    :class="activeTab === 'relations' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
-                    class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center">
-                🔗 Synonyms & Antonyms
-            </button>
-            <button @click="activeTab = 'anchor'" 
-                    :class="activeTab === 'anchor' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
-                    class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center gap-2">
-                🧠 Brain Anchor
-            </button>
-        </nav>
-    </div>
-
-    <div x-show="activeTab === 'definitions'" class="space-y-6">
-        {% for result in results %}
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" x-data="{ expanded: true }">
-            <div class="px-6 flex justify-between items-center border-b border-slate-100 cursor-pointer hover:brightness-95 transition-all" 
-                style="background-color: {{ result.color }}; height: 60px; min-height: 60px;"
-                @click="expanded = !expanded">
-                <div class="flex items-center space-x-3">
-                    <svg class="w-5 h-5 text-slate-700 transition-transform duration-300" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    <div class="flex flex-col justify-center">
-                        <span class="text-sm font-bold text-slate-800 uppercase tracking-wider">{{ result.name }}</span>
-                    </div>
-                </div>
-                <div class="flex items-center">
-                    <button type="button" onclick="event.stopPropagation(); window.manualToggle('{{ result.name }}', this)" data-mode="full" style="height: 40px; padding: 0 20px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: block !important; visibility: visible !important; background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; transition: all 0.2s;">
-                        🎯 SHOW PINNED ONLY
-                    </button>
-                </div>
-            </div>
-            <div class="px-6 py-4" x-show="expanded" x-transition>
-                <iframe src="/entry/{{ result.name }}/{{ result.safe_query }}?word_id={{ word.id }}" class="w-full border-none overflow-hidden min-h-[100px]" id="iframe-{{ result.name }}" scrolling="no"></iframe>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <div x-show="activeTab === 'relations'" x-cloak class="grid grid-cols-2 gap-8">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 class="text-xl font-bold text-emerald-700 mb-4 flex items-center">Synonyms</h3>
-            <form @submit.prevent="addRelation('synonym')" class="flex mb-4">
-                <input type="text" x-model="newSynonym" placeholder="Add synonym..." class="flex-grow bg-slate-50 border border-slate-200 rounded-l-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
-                <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-r-lg font-bold hover:bg-emerald-700 transition">+</button>
-            </form>
-            <div class="flex flex-wrap gap-2">
-                <template x-for="item in manualSynonyms" :key="item.id">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
-                        <span x-text="item.word"></span>
-                        <button @click="deleteRelation('synonym', item.id)" class="ml-1.5 text-emerald-600 hover:text-rose-600 focus:outline-none">✕</button>
-                    </span>
-                </template>
-                <template x-for="word in autoSynonyms" :key="word">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80"><span x-text="word"></span></span>
-                </template>
-            </div>
-        </div>
-
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 class="text-xl font-bold text-rose-700 mb-4 flex items-center">Antonyms</h3>
-            <form @submit.prevent="addRelation('antonym')" class="flex mb-4">
-                <input type="text" x-model="newAntonym" placeholder="Add antonym..." class="flex-grow bg-slate-50 border border-slate-200 rounded-l-lg px-4 py-2 focus:outline-none focus:border-rose-500">
-                <button type="submit" class="bg-rose-600 text-white px-4 py-2 rounded-r-lg font-bold hover:bg-rose-700 transition">+</button>
-            </form>
-            <div class="flex flex-wrap gap-2">
-                <template x-for="item in manualAntonyms" :key="item.id">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-rose-100 text-rose-800 border border-rose-200 shadow-sm">
-                        <span x-text="item.word"></span>
-                        <button @click="deleteRelation('antonym', item.id)" class="ml-1.5 text-rose-600 hover:text-rose-900 focus:outline-none">✕</button>
-                    </span>
-                </template>
-                <template x-for="word in autoAntonyms" :key="word">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80"><span x-text="word"></span></span>
-                </template>
-            </div>
-        </div>
-    </div>
-
-    <div x-show="activeTab === 'anchor'" x-cloak>
-        <div x-data="notesEngine({{ word.id }}, {{ word.custom_data | tojson | forceescape if word.custom_data else 'null' }})">
+    <div class="transition-all duration-500 ease-in-out" :class="isPassageOpen ? 'pr-0 md:pr-[32rem]' : ''">
+        <div class="max-w-4xl mx-auto mt-8 vocab-app-wrapper">
             
-            <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 border-b border-slate-200 pb-3 gap-4">
-                <div class="text-sm font-medium text-slate-500">
-                    Your personalized notes, mnemonics, and translations.
-                </div>
-                
-                <div class="flex flex-wrap items-center gap-3">
-                    <button @click="$dispatch('open-typography')" class="text-xs font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition flex items-center gap-1 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm mr-2">
-                        🎨 Theme Studio
-                    </button>
-
-                    <a :href="`/api/words/${wordId}/export`" target="_blank" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                        📥 Export JSON
-                    </a>
-                    
-                    <label class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm cursor-pointer">
-                        📤 Import JSON
-                        <input type="file" accept=".json" class="hidden" @change="importJsonFile($event)">
-                    </label>
-
-                    <button @click="openEditor()" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 border-l pl-3 border-slate-200">
-                        ✏️ Edit Manually
-                    </button>
-                    
-                    <button @click="fillWithAI()" :disabled="isGenerating" class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow hover:shadow-md hover:scale-105 transition disabled:opacity-50 flex items-center gap-2">
-                        <span x-show="!isGenerating">✨ Auto-Fill with AI</span>
-                        <span x-show="isGenerating" class="flex items-center gap-2">
-                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            Consulting AI...
-                        </span>
-                    </button>
-                </div>
+            <div class="mb-4">
+                <a href="/words" class="text-indigo-600 hover:underline">&larr; Back to Archive</a>
             </div>
-
-            <div x-show="customData && !isGenerating" class="space-y-6 animate-fade-in-up">
-                <template x-for="posBlock in customData" :key="posBlock.partOfSpeech">
-                    <div class="bg-white rounded-2xl p-6 border-l-4 border-indigo-500 shadow-sm">
-                        
-                        <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
-                            <span class="text-lg font-black text-indigo-800 uppercase tracking-widest" x-text="posBlock.partOfSpeech"></span>
-                            <div class="flex space-x-3 text-sm font-mono text-slate-500">
-                                <span x-show="posBlock.usPronunciation" x-text="'US: ' + posBlock.usPronunciation"></span>
-                                <span x-show="posBlock.ukPronunciation" x-text="'UK: ' + posBlock.ukPronunciation"></span>
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <template x-for="(meaning, index) in posBlock.meanings" :key="index">
-                                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                                    <div class="flex justify-between items-start gap-4">
-                                        <p class="txt-def-en text-slate-800" x-text="meaning.definition"></p>
-                                        <span x-show="meaning.translation" class="txt-def-fa shrink-0 bg-rose-100 text-rose-800 px-3 py-1 rounded-lg shadow-sm" dir="rtl" x-text="meaning.translation"></span>
-                                    </div>
-                                    
-                                    <p class="txt-ex-en text-slate-600 mt-2" x-show="meaning.example" x-text="`&quot;${meaning.example}&quot;`"></p>
-                                    
-                                    <div x-show="meaning.mnemonic" class="txt-note-en mt-4 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg flex items-start gap-3 shadow-inner">
-                                        <span class="text-xl font-sans">💡</span>
-                                        <span class="pt-0.5" x-text="meaning.mnemonic"></span>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-
-                        <div x-show="posBlock.generalExamples && posBlock.generalExamples.length > 0" class="mt-6">
-                            <span class="font-bold text-slate-400 uppercase text-xs mb-2 block">General Examples</span>
-                            <ul class="space-y-2">
-                                <template x-for="(ex, index) in posBlock.generalExamples" :key="index">
-                                    <li>
-                                        <span class="txt-ex-en text-slate-700 block mb-0.5" x-text="`• ${ex.example}`"></span>
-                                        <span class="txt-ex-fa text-slate-500 block pl-3" dir="rtl" x-text="ex.translation"></span>
-                                    </li>
-                                </template>
-                            </ul>
-                        </div>
-
-                        <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-6">
-                            <div x-show="posBlock.synonyms && posBlock.synonyms.length > 0">
-                                <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Synonyms</span>
-                                <div class="flex flex-wrap gap-1">
-                                    <template x-for="syn in posBlock.synonyms">
-                                        <span class="txt-rel-en bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md" x-text="syn"></span>
-                                    </template>
-                                </div>
-                            </div>
-                            <div x-show="posBlock.collocations && posBlock.collocations.length > 0">
-                                <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Collocations</span>
-                                <div class="flex flex-wrap gap-1">
-                                    <template x-for="col in posBlock.collocations">
-                                        <span class="txt-rel-en bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded-md" x-text="col"></span>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div x-show="posBlock.notes && posBlock.notes.length > 0" class="mt-4 p-4 bg-slate-50 rounded-xl text-slate-700 border border-slate-200">
-                            <span class="font-bold text-slate-800 mb-2 block text-sm">📝 Notes & Tips:</span>
-                            <ul class="space-y-1 pl-1">
-                                <template x-for="(note, nIndex) in posBlock.notes" :key="nIndex">
-                                    <li class="flex items-start gap-2">
-                                        <span class="text-indigo-400 mt-0.5 text-sm">•</span>
-                                        <span class="txt-note-en" x-text="note"></span>
-                                    </li>
-                                </template>
-                            </ul>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
-            <div x-show="!customData && !isGenerating" class="text-center py-12 bg-white border-2 border-dashed border-slate-200 rounded-2xl">
-                <div class="text-5xl mb-4">🪹</div>
-                <h3 class="text-slate-800 text-xl font-bold mb-2">No Brain Anchors yet.</h3>
-                <p class="text-slate-500 text-sm mb-6 max-w-md mx-auto">Use the AI Auto-Fill to generate a rich, bilingual profile, or import your legacy Google Sheets JSON.</p>
-                <button @click="fillWithAI()" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl shadow-md hover:bg-indigo-700 transition">
-                    Generate Profile
+            
+            <div class="flex justify-between items-end mb-6">
+                <h1 class="text-5xl font-black text-slate-900" x-text="targetWord"></h1>
+                <button onclick="window.playTTSAudio('{{ word.word }}')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-full shadow-sm transition-transform active:scale-95">
+                    🔊 Listen
                 </button>
             </div>
 
-            <div x-show="isEditing" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-sm" x-cloak>
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col h-[85vh] m-4 animate-fade-in-up">
-                    <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
-                        <h3 class="font-black text-slate-800">✏️ Raw JSON Editor</h3>
-                        <button @click="isEditing = false" class="text-slate-400 hover:text-rose-500 font-bold px-2 py-1">Close ✕</button>
+            <div class="grid grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+                    <p class="text-xs text-slate-500 uppercase font-bold">Total Reviews</p>
+                    <p class="text-2xl font-bold text-slate-800">{{ word.total_reviews }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+                    <p class="text-xs text-slate-500 uppercase font-bold">Current Streak</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ word.repetitions }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+                    <p class="text-xs text-slate-500 uppercase font-bold">Next Interval</p>
+                    <p class="text-2xl font-bold text-emerald-600">{{ word.interval }} days</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+                    <p class="text-xs text-slate-500 uppercase font-bold">Ease Factor</p>
+                    <p class="text-2xl font-bold text-amber-500">{{ "%.2f"|format(word.ease_factor) }}</p>
+                </div>
+            </div>
+
+            <div class="border-b border-slate-200 mb-6">
+                <nav class="-mb-px flex space-x-6 overflow-x-auto">
+                    <button @click="activeTab = 'definitions'" :class="activeTab === 'definitions' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'" class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition">
+                        📚 Local Definitions
+                    </button>
+                    <button @click="activeTab = 'relations'" :class="activeTab === 'relations' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'" class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center">
+                        🔗 Synonyms
+                    </button>
+                    <button @click="activeTab = 'anchor'" :class="activeTab === 'anchor' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'" class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center gap-2">
+                        🧠 Brain Anchor
+                    </button>
+                    
+                    <button x-show="hasCorpus" x-cloak @click="activeTab = 'corpus'" :class="activeTab === 'corpus' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'" class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center gap-2 animate-fade-in-up">
+                        🎓 Academic Context
+                        <span class="bg-indigo-100 text-indigo-700 text-xs py-0.5 px-2 rounded-full" x-text="corpusData.sentences ? corpusData.sentences.length : 0"></span>
+                    </button>
+                </nav>
+            </div>
+
+            <div x-show="activeTab === 'definitions'" class="space-y-6">
+                {% for result in results %}
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" x-data="{ expanded: true }">
+                    <div class="px-6 flex justify-between items-center border-b border-slate-100 cursor-pointer hover:brightness-95 transition-all" 
+                        style="background-color: {{ result.color }}; height: 60px; min-height: 60px;" @click="expanded = !expanded">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-5 h-5 text-slate-700 transition-transform duration-300" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            <div class="flex flex-col justify-center">
+                                <span class="text-sm font-bold text-slate-800 uppercase tracking-wider">{{ result.name }}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <button type="button" onclick="event.stopPropagation(); window.manualToggle('{{ result.name }}', this)" data-mode="full" style="height: 40px; padding: 0 20px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: block !important; visibility: visible !important; background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; transition: all 0.2s;">
+                                🎯 SHOW PINNED ONLY
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex-grow p-4 bg-slate-900">
-                        <textarea x-model="rawEditorContent" class="txt-note-en w-full h-full bg-slate-900 text-emerald-400 p-2 focus:outline-none resize-none" spellcheck="false"></textarea>
+                    <div class="px-6 py-4" x-show="expanded" x-transition>
+                        <iframe src="/entry/{{ result.name }}/{{ result.safe_query }}?word_id={{ word.id }}" class="w-full border-none overflow-hidden min-h-[100px]" id="iframe-{{ result.name }}" scrolling="no"></iframe>
                     </div>
-                    <div class="p-4 bg-slate-50 rounded-b-2xl flex justify-between items-center border-t border-slate-200">
-                        <span class="text-xs text-slate-500 font-medium">Must be valid JSON formatting.</span>
-                        <button @click="saveManualEdits()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-8 rounded-lg shadow transition">
-                            Save Changes
-                        </button>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div x-show="activeTab === 'relations'" x-cloak class="grid grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-xl font-bold text-emerald-700 mb-4 flex items-center">Synonyms</h3>
+                    <form @submit.prevent="addRelation('synonym')" class="flex mb-4">
+                        <input type="text" x-model="newSynonym" placeholder="Add synonym..." class="flex-grow bg-slate-50 border border-slate-200 rounded-l-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                        <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-r-lg font-bold hover:bg-emerald-700 transition">+</button>
+                    </form>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="item in manualSynonyms" :key="item.id">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
+                                <span x-text="item.word"></span>
+                                <button @click="deleteRelation('synonym', item.id)" class="ml-1.5 text-emerald-600 hover:text-rose-600 focus:outline-none">✕</button>
+                            </span>
+                        </template>
+                        <template x-for="word in autoSynonyms" :key="word">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80"><span x-text="word"></span></span>
+                        </template>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-xl font-bold text-rose-700 mb-4 flex items-center">Antonyms</h3>
+                    <form @submit.prevent="addRelation('antonym')" class="flex mb-4">
+                        <input type="text" x-model="newAntonym" placeholder="Add antonym..." class="flex-grow bg-slate-50 border border-slate-200 rounded-l-lg px-4 py-2 focus:outline-none focus:border-rose-500">
+                        <button type="submit" class="bg-rose-600 text-white px-4 py-2 rounded-r-lg font-bold hover:bg-rose-700 transition">+</button>
+                    </form>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="item in manualAntonyms" :key="item.id">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-rose-100 text-rose-800 border border-rose-200 shadow-sm">
+                                <span x-text="item.word"></span>
+                                <button @click="deleteRelation('antonym', item.id)" class="ml-1.5 text-rose-600 hover:text-rose-900 focus:outline-none">✕</button>
+                            </span>
+                        </template>
+                        <template x-for="word in autoAntonyms" :key="word">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80"><span x-text="word"></span></span>
+                        </template>
                     </div>
                 </div>
             </div>
 
-            <div x-data="typographyStudio()" @open-typography.window="isOpen = true">
-                <div x-show="isOpen" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[200] backdrop-blur-sm" x-cloak>
-                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col h-[85vh] m-4 animate-fade-in-up" @click.away="isOpen = false">
-                        
-                        <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex justify-between items-center rounded-t-2xl">
-                            <h3 class="font-black text-white text-lg flex items-center gap-2">🎨 Theme & Typography Studio</h3>
-                            <div class="flex items-center gap-4">
-                                <button @click="resetDefaults()" class="text-sm font-bold text-indigo-300 hover:text-white">Reset to Defaults</button>
-                                <button @click="isOpen = false" class="text-slate-400 hover:text-rose-500 font-bold text-xl px-2 py-1">✕</button>
-                            </div>
+            <div x-show="activeTab === 'corpus'" x-cloak>
+                {% include '_academic_corpus.html' %}
+            </div>
+
+            <div x-show="activeTab === 'anchor'" x-cloak>
+                <div x-data="notesEngine({{ word.id }}, JSON.parse(document.getElementById('safedata-custom').textContent))">
+                    
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 border-b border-slate-200 pb-3 gap-4">
+                        <div class="text-sm font-medium text-slate-500">
+                            Your personalized notes, mnemonics, and translations.
                         </div>
+                        
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button @click="$dispatch('open-typography')" class="text-xs font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition flex items-center gap-1 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm mr-2">
+                                🎨 Theme Studio
+                            </button>
 
-                        <div class="flex-grow overflow-y-auto p-6 bg-slate-50 flex flex-col gap-6">
-                            <p class="text-sm text-slate-500 bg-blue-50 border border-blue-100 p-3 rounded-lg">
-                                💡 <b>Pro Tip:</b> You can type <i>any</i> font installed on your PC into the "Font Family" box (e.g. <code>B Nazanin</code>, <code>"Times New Roman"</code>). It will render instantly.
-                            </p>
+                            <a :href="`/api/words/${wordId}/export`" target="_blank" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                                📥 Export
+                            </a>
+                            
+                            <label class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm cursor-pointer">
+                                📤 Import
+                                <input type="file" accept=".json" class="hidden" @change="importJsonFile($event)">
+                            </label>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {% macro font_controls(title, area, lang) %}
-                                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                                    <h4 class="font-bold text-slate-700 uppercase tracking-widest text-xs mb-4 border-b border-slate-100 pb-2">{{ title }}</h4>
-                                    
-                                    <label class="block text-xs font-bold text-slate-500 mb-1">Font Family</label>
-                                    <input type="text" x-model="settings.{{area}}.{{lang}}.font" list="fonts-list-{{lang}}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 mb-4 outline-none">
-                                    
-                                    <div class="flex gap-4 mb-4">
-                                        <div class="flex-1">
-                                            <label class="block text-xs font-bold text-slate-500 mb-1">Size (px)</label>
-                                            <input type="number" x-model="settings.{{area}}.{{lang}}.size" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                        </div>
-                                        <div class="flex-1">
-                                            <label class="block text-xs font-bold text-slate-500 mb-1">Weight</label>
-                                            <select x-model="settings.{{area}}.{{lang}}.weight" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                <option value="400">Regular (400)</option>
-                                                <option value="500">Medium (500)</option>
-                                                <option value="600">Semibold (600)</option>
-                                                <option value="700">Bold (700)</option>
-                                                <option value="900">Black (900)</option>
-                                            </select>
-                                        </div>
-                                    </div>
+                            <button @click="openEditor()" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 border-l pl-3 border-slate-200">
+                                ✏️ Edit
+                            </button>
+                            
+                            <button @click="fillWithAI()" :disabled="isGenerating" class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow hover:shadow-md hover:scale-105 transition disabled:opacity-50 flex items-center gap-2">
+                                <span x-show="!isGenerating">✨ Auto-Fill with AI</span>
+                                <span x-show="isGenerating" class="flex items-center gap-2">
+                                    <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    Consulting AI...
+                                </span>
+                            </button>
+                        </div>
+                    </div>
 
-                                    <div class="flex items-center">
-                                        <input type="checkbox" id="{{area}}_{{lang}}_italic" x-model="settings.{{area}}.{{lang}}.italic" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500">
-                                        <label for="{{area}}_{{lang}}_italic" class="ml-2 text-sm font-medium text-slate-700">Enable Italic Style</label>
+                    <div x-show="customData && !isGenerating" class="space-y-6 animate-fade-in-up">
+                        <template x-for="posBlock in customData" :key="posBlock.partOfSpeech">
+                            <div class="bg-white rounded-2xl p-6 border-l-4 border-indigo-500 shadow-sm">
+                                
+                                <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                                    <span class="text-lg font-black text-indigo-800 uppercase tracking-widest" x-text="posBlock.partOfSpeech"></span>
+                                    <div class="flex space-x-3 text-sm font-mono text-slate-500">
+                                        <span x-show="posBlock.usPronunciation" x-text="'US: ' + posBlock.usPronunciation"></span>
+                                        <span x-show="posBlock.ukPronunciation" x-text="'UK: ' + posBlock.ukPronunciation"></span>
                                     </div>
                                 </div>
-                                {% endmacro %}
 
-                                {{ font_controls('📚 Definitions (English)', 'def', 'en') }}
-                                {{ font_controls('📚 Definitions (Persian)', 'def', 'fa') }}
+                                <div class="space-y-4">
+                                    <template x-for="(meaning, index) in posBlock.meanings" :key="index">
+                                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                            <div class="flex justify-between items-start gap-4">
+                                                <p class="txt-def-en text-slate-800" x-text="meaning.definition"></p>
+                                                <span x-show="meaning.translation" class="txt-def-fa shrink-0 bg-rose-100 text-rose-800 px-3 py-1 rounded-lg shadow-sm" dir="rtl" x-text="meaning.translation"></span>
+                                            </div>
+                                            <p class="txt-ex-en text-slate-600 mt-2" x-show="meaning.example" x-text="`&quot;${meaning.example}&quot;`"></p>
+                                            <div x-show="meaning.mnemonic" class="txt-note-en mt-4 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg flex items-start gap-3 shadow-inner">
+                                                <span class="text-xl font-sans">💡</span>
+                                                <span class="pt-0.5" x-text="meaning.mnemonic"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <div x-show="posBlock.generalExamples && posBlock.generalExamples.length > 0" class="mt-6">
+                                    <span class="font-bold text-slate-400 uppercase text-xs mb-2 block">General Examples</span>
+                                    <ul class="space-y-2">
+                                        <template x-for="(ex, index) in posBlock.generalExamples" :key="index">
+                                            <li>
+                                                <span class="txt-ex-en text-slate-700 block mb-0.5" x-text="`• ${ex.example}`"></span>
+                                                <span class="txt-ex-fa text-slate-500 block pl-3" dir="rtl" x-text="ex.translation"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+
+                                <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-6">
+                                    <div x-show="posBlock.synonyms && posBlock.synonyms.length > 0">
+                                        <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Synonyms</span>
+                                        <div class="flex flex-wrap gap-1">
+                                            <template x-for="syn in posBlock.synonyms">
+                                                <span class="txt-rel-en bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md" x-text="syn"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div x-show="posBlock.collocations && posBlock.collocations.length > 0">
+                                        <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Collocations</span>
+                                        <div class="flex flex-wrap gap-1">
+                                            <template x-for="col in posBlock.collocations">
+                                                <span class="txt-rel-en bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded-md" x-text="col"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
                                 
-                                {{ font_controls('💬 Examples (English)', 'ex', 'en') }}
-                                {{ font_controls('💬 Examples (Persian)', 'ex', 'fa') }}
-                                
-                                {{ font_controls('🔗 Relations (Synonyms/Colloc)', 'rel', 'en') }}
-                                {{ font_controls('🔗 Relations (Persian Support)', 'rel', 'fa') }}
-                                
-                                {{ font_controls('📝 Notes & Tips (English)', 'note', 'en') }}
-                                {{ font_controls('📝 Notes & Tips (Persian)', 'note', 'fa') }}
+                                <div x-show="posBlock.notes && posBlock.notes.length > 0" class="mt-4 p-4 bg-slate-50 rounded-xl text-slate-700 border border-slate-200">
+                                    <span class="font-bold text-slate-800 mb-2 block text-sm">📝 Notes & Tips:</span>
+                                    <ul class="space-y-1 pl-1">
+                                        <template x-for="(note, nIndex) in posBlock.notes" :key="nIndex">
+                                            <li class="flex items-start gap-2">
+                                                <span class="text-indigo-400 mt-0.5 text-sm">•</span>
+                                                <span class="txt-note-en" x-text="note"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="!customData && !isGenerating" class="text-center py-12 bg-white border-2 border-dashed border-slate-200 rounded-2xl">
+                        <div class="text-5xl mb-4">🪹</div>
+                        <h3 class="text-slate-800 text-xl font-bold mb-2">No Brain Anchors yet.</h3>
+                        <p class="text-slate-500 text-sm mb-6 max-w-md mx-auto">Use the AI Auto-Fill to generate a rich, bilingual profile, or import your legacy Google Sheets JSON.</p>
+                        <button @click="fillWithAI()" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl shadow-md hover:bg-indigo-700 transition">
+                            Generate Profile
+                        </button>
+                    </div>
+
+                    <div x-show="isEditing" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-sm" x-cloak>
+                        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col h-[85vh] m-4 animate-fade-in-up">
+                            <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                                <h3 class="font-black text-slate-800">✏️ Raw JSON Editor</h3>
+                                <button @click="isEditing = false" class="text-slate-400 hover:text-rose-500 font-bold px-2 py-1">Close ✕</button>
+                            </div>
+                            <div class="flex-grow p-4 bg-slate-900">
+                                <textarea x-model="rawEditorContent" class="txt-note-en w-full h-full bg-slate-900 text-emerald-400 p-2 focus:outline-none resize-none" spellcheck="false"></textarea>
+                            </div>
+                            <div class="p-4 bg-slate-50 rounded-b-2xl flex justify-between items-center border-t border-slate-200">
+                                <button @click="saveManualEdits()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-8 rounded-lg shadow transition">
+                                    Save Changes
+                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <datalist id="fonts-list-en">
-                    <option value='"Segoe UI", system-ui, sans-serif'>Windows Default</option>
-                    <option value='Arial, sans-serif'>Arial</option>
-                    <option value='"Times New Roman", serif'>Times New Roman</option>
-                    <option value='"Courier New", monospace'>Courier New</option>
-                    <option value='Consolas, monospace'>Consolas</option>
-                </datalist>
-                <datalist id="fonts-list-fa">
-                    <option value='"Vazirmatn", Tahoma, sans-serif'>Vazirmatn</option>
-                    <option value='Tahoma, sans-serif'>Tahoma (Safe)</option>
-                    <option value='"B Nazanin", Tahoma, sans-serif'>B Nazanin</option>
-                    <option value='"B Roya", Tahoma, sans-serif'>B Roya</option>
-                    <option value='"IRANSans", Tahoma, sans-serif'>IRANSans</option>
-                </datalist>
+                    <div x-data="typographyStudio()" @open-typography.window="isOpen = true">
+                        <div x-show="isOpen" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[200] backdrop-blur-sm" x-cloak>
+                            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col h-[85vh] m-4 animate-fade-in-up" @click.away="isOpen = false">
+                                
+                                <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex justify-between items-center rounded-t-2xl">
+                                    <h3 class="font-black text-white text-lg flex items-center gap-2">🎨 Theme & Typography Studio</h3>
+                                    <div class="flex items-center gap-4">
+                                        <button @click="resetDefaults()" class="text-sm font-bold text-indigo-300 hover:text-white">Reset to Defaults</button>
+                                        <button @click="isOpen = false" class="text-slate-400 hover:text-rose-500 font-bold text-xl px-2 py-1">✕</button>
+                                    </div>
+                                </div>
+
+                                <div class="flex-grow overflow-y-auto p-6 bg-slate-50 flex flex-col gap-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {% macro font_controls(title, area, lang) %}
+                                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                            <h4 class="font-bold text-slate-700 uppercase tracking-widest text-xs mb-4 border-b border-slate-100 pb-2">{{ title }}</h4>
+                                            <label class="block text-xs font-bold text-slate-500 mb-1">Font Family</label>
+                                            <input type="text" x-model="settings.{{area}}.{{lang}}.font" list="fonts-list-{{lang}}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 mb-4 outline-none">
+                                            <div class="flex gap-4 mb-4">
+                                                <div class="flex-1">
+                                                    <label class="block text-xs font-bold text-slate-500 mb-1">Size (px)</label>
+                                                    <input type="number" x-model="settings.{{area}}.{{lang}}.size" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                </div>
+                                                <div class="flex-1">
+                                                    <label class="block text-xs font-bold text-slate-500 mb-1">Weight</label>
+                                                    <select x-model="settings.{{area}}.{{lang}}.weight" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                        <option value="400">Regular (400)</option>
+                                                        <option value="500">Medium (500)</option>
+                                                        <option value="600">Semibold (600)</option>
+                                                        <option value="700">Bold (700)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="{{area}}_{{lang}}_italic" x-model="settings.{{area}}.{{lang}}.italic" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500">
+                                                <label for="{{area}}_{{lang}}_italic" class="ml-2 text-sm font-medium text-slate-700">Enable Italic Style</label>
+                                            </div>
+                                        </div>
+                                        {% endmacro %}
+
+                                        {{ font_controls('📚 Definitions (English)', 'def', 'en') }}
+                                        {{ font_controls('📚 Definitions (Persian)', 'def', 'fa') }}
+                                        {{ font_controls('💬 Examples (English)', 'ex', 'en') }}
+                                        {{ font_controls('💬 Examples (Persian)', 'ex', 'fa') }}
+                                        {{ font_controls('🔗 Relations/Tags (English)', 'rel', 'en') }}
+                                        {{ font_controls('🔗 Relations (Persian)', 'rel', 'fa') }}
+                                        {{ font_controls('📝 Notes (English)', 'note', 'en') }}
+                                        {{ font_controls('🎓 Academic Corpus (English)', 'corp', 'en') }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <datalist id="fonts-list-en">
+                            <option value='"Segoe UI", system-ui, sans-serif'>Windows Default</option>
+                            <option value='"Times New Roman", serif'>Times New Roman</option>
+                            <option value='Arial, sans-serif'>Arial</option>
+                        </datalist>
+                        <datalist id="fonts-list-fa">
+                            <option value='"Vazirmatn", Tahoma, sans-serif'>Vazirmatn</option>
+                            <option value='Tahoma, sans-serif'>Tahoma</option>
+                        </datalist>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <div class="fixed inset-y-0 right-0 w-full md:w-[32rem] bg-slate-50 shadow-[-20px_0_40px_rgba(0,0,0,0.1)] z-[100] transform transition-transform duration-500 ease-in-out flex flex-col border-l border-slate-200" 
+         :class="isPassageOpen ? 'translate-x-0' : 'translate-x-full'" x-cloak>
+        
+        <div class="px-6 py-5 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
+            <div>
+                <h3 class="font-black text-slate-800 text-lg flex items-center gap-2">📖 Reading Passage</h3>
+                <p class="text-xs font-bold text-indigo-600 mt-1 uppercase tracking-widest" x-text="passageData.section_name"></p>
             </div>
+            <button @click="isPassageOpen = false" class="bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                <span class="font-bold text-xl">✕</span>
+            </button>
+        </div>
+
+        <div class="flex-grow overflow-y-auto p-6 md:p-8 bg-white txt-corp-en leading-loose text-slate-800 relative whitespace-pre-wrap">
+            
+            <div x-show="loadingPassage" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                <svg class="animate-spin h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </div>
+
+            <template x-for="sent in passageData.sentences" :key="sent.id">
+                <span :id="'sent-' + sent.id" 
+                      class="transition-colors duration-700"
+                      :class="sent.id === targetSentenceId ? 'bg-amber-100/80 rounded py-1 px-0.5 shadow-[0_0_0_2px_rgba(254,243,199,0.8)]' : ''"
+                      x-html="sent.id === targetSentenceId ? highlightWord(sent.text, targetWordForm) : sent.text + ' '">
+                </span>
+            </template>
+        </div>
     </div>
 </div>
 
@@ -383,29 +396,15 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('typographyStudio', () => ({
             isOpen: false,
-            
-            // The master state containing all 32 variables
             settings: {
-                def: {
-                    en: { font: '"Segoe UI", system-ui, sans-serif', size: 18, weight: '500', italic: false },
-                    fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 17, weight: '500', italic: false }
-                },
-                ex: {
-                    en: { font: '"Segoe UI", system-ui, sans-serif', size: 16, weight: '400', italic: true },
-                    fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false }
-                },
-                rel: {
-                    en: { font: '"Segoe UI", system-ui, sans-serif', size: 14, weight: '600', italic: false },
-                    fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 13, weight: '600', italic: false }
-                },
-                note: {
-                    en: { font: '"Segoe UI", system-ui, sans-serif', size: 15, weight: '400', italic: false },
-                    fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false }
-                }
+                def: { en: { font: '"Segoe UI", system-ui, sans-serif', size: 18, weight: '500', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 17, weight: '500', italic: false } },
+                ex:  { en: { font: '"Segoe UI", system-ui, sans-serif', size: 16, weight: '400', italic: true }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false } },
+                rel: { en: { font: '"Segoe UI", system-ui, sans-serif', size: 14, weight: '600', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 13, weight: '600', italic: false } },
+                note:{ en: { font: '"Segoe UI", system-ui, sans-serif', size: 15, weight: '400', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false } },
+                corp:{ en: { font: '"Times New Roman", Times, serif', size: 17, weight: '400', italic: false } }
             },
-            
             init() {
-                const saved = localStorage.getItem('empire_pro_typography_v3');
+                const saved = localStorage.getItem('empire_pro_typography_v4');
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     for (const section in parsed) {
@@ -417,7 +416,6 @@
                 this.applyStyles();
                 this.$watch('settings', () => this.applyStyles(), { deep: true });
             },
-
             applyStyles() {
                 const root = document.documentElement;
                 for (const [section, langs] of Object.entries(this.settings)) {
@@ -428,21 +426,20 @@
                         root.style.setProperty(`--i-${section}-${lang}`, props.italic ? 'italic' : 'normal');
                     }
                 }
-                localStorage.setItem('empire_pro_typography_v3', JSON.stringify(this.settings));
+                localStorage.setItem('empire_pro_typography_v4', JSON.stringify(this.settings));
             },
-
             resetDefaults() {
                 this.settings = {
                     def: { en: { font: '"Segoe UI", system-ui, sans-serif', size: 18, weight: '500', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 17, weight: '500', italic: false } },
                     ex:  { en: { font: '"Segoe UI", system-ui, sans-serif', size: 16, weight: '400', italic: true }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false } },
                     rel: { en: { font: '"Segoe UI", system-ui, sans-serif', size: 14, weight: '600', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 13, weight: '600', italic: false } },
-                    note:{ en: { font: '"Segoe UI", system-ui, sans-serif', size: 15, weight: '400', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false } }
+                    note:{ en: { font: '"Segoe UI", system-ui, sans-serif', size: 15, weight: '400', italic: false }, fa: { font: '"Vazirmatn", Tahoma, sans-serif', size: 15, weight: '400', italic: false } },
+                    corp:{ en: { font: '"Times New Roman", Times, serif', size: 17, weight: '400', italic: false } }
                 };
             }
         }));
     });
 
-    // 2. Local Definitions Frame Resizer
     window.manualToggle = function(dictName, btn) {
         const iframe = document.getElementById('iframe-' + dictName);
         const currentMode = btn.getAttribute('data-mode');
@@ -466,13 +463,94 @@
         }
     });
 
-    // 3. Data Engine (Synonyms & Brain Anchor)
+    // Main App Data Engine (Now with Corpus Sliding Panel Logic)
     document.addEventListener('alpine:init', () => {
-        Alpine.data('wordRelations', (wordId) => ({
+        Alpine.data('wordRelations', (wordId, wordText) => ({
             activeTab: 'definitions',
+            targetWord: wordText,
+            targetWordForm: wordText, 
+            
             autoSynonyms: [], autoAntonyms: [], manualSynonyms: [], manualAntonyms: [],
             newSynonym: '', newAntonym: '',
-            init() { this.fetchRelations(); },
+            
+            // Corpus State
+            hasCorpus: false,
+            corpusData: { sentences: [], total_pages: 1, current_page: 1, total_items: 0 },
+            corpusFilters: [],
+            corpusFilter: 'all',
+            corpusLoading: false,
+
+            // Slideover State
+            isPassageOpen: false,
+            loadingPassage: false,
+            passageData: { section_name: '', sentences: [] },
+            targetSentenceId: null,
+
+            init() { 
+                this.fetchRelations(); 
+                this.fetchCorpusFilters();
+                this.fetchCorpus(1);
+            },
+
+            async fetchCorpusFilters() {
+                try {
+                    const res = await fetch(`/api/words/${wordId}/corpus/filters`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        this.corpusFilters = json.data;
+                    }
+                } catch(e) {}
+            },
+
+            async fetchCorpus(page) {
+                this.corpusLoading = true;
+                try {
+                    const res = await fetch(`/api/words/${wordId}/corpus?page=${page}&exam_type=${this.corpusFilter}`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json.status === 'success') {
+                            this.corpusData = json.data;
+                            this.hasCorpus = true;
+                        }
+                    }
+                } catch(e) {}
+                finally { this.corpusLoading = false; }
+            },
+
+            async openPassage(sectionId, sentenceId) {
+                this.isPassageOpen = true;
+                this.loadingPassage = true;
+                this.targetSentenceId = sentenceId;
+
+                const sentenceObj = this.corpusData.sentences.find(s => s.id === sentenceId);
+                if (sentenceObj) {
+                    this.targetWordForm = sentenceObj.word_form || this.targetWord;
+                }
+
+                try {
+                    const res = await fetch(`/api/corpus/passage/${sectionId}`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        this.passageData = json.data;
+
+                        setTimeout(() => {
+                            const el = document.getElementById('sent-' + sentenceId);
+                            if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 100);
+                    }
+                } catch(e) {}
+                finally { this.loadingPassage = false; }
+            },
+
+            highlightWord(sentence, specificForm) {
+                const wordToHighlight = specificForm || this.targetWord;
+                if (!wordToHighlight) return sentence + ' ';
+                const regex = new RegExp(`\\b(${wordToHighlight}[a-z]*)\\b`, 'gi');
+                return sentence.replace(regex, '<mark class="highlight-word">$1</mark>') + ' ';
+            },
+
             async fetchRelations() {
                 try {
                     const res = await fetch(`/api/word/${wordId}/relations`);
@@ -487,10 +565,7 @@
                 const wordVal = type === 'synonym' ? this.newSynonym : this.newAntonym;
                 if (!wordVal.trim()) return;
                 try {
-                    const res = await fetch(`/api/word/${wordId}/relations`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ type: type, word: wordVal })
-                    });
+                    const res = await fetch(`/api/word/${wordId}/relations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: type, word: wordVal }) });
                     const json = await res.json();
                     if (json.status === 'success') {
                         if (type === 'synonym') { this.manualSynonyms.push({ id: json.id, word: json.word }); this.newSynonym = ''; } 
@@ -510,7 +585,8 @@
         }));
 
         Alpine.data('notesEngine', (wordId, initialData) => ({
-            wordId: wordId, customData: initialData,
+            wordId: wordId, 
+            customData: initialData, // safely initialized from the script tag!
             isGenerating: false, isEditing: false, rawEditorContent: '',
             async fillWithAI() {
                 this.isGenerating = true;
@@ -545,10 +621,7 @@
             async saveManualEdits() {
                 try {
                     const parsedData = JSON.parse(this.rawEditorContent);
-                    const res = await fetch(`/api/words/${this.wordId}/custom_data`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ custom_data: parsedData })
-                    });
+                    const res = await fetch(`/api/words/${this.wordId}/custom_data`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ custom_data: parsedData }) });
                     if (res.ok) { this.customData = parsedData; this.isEditing = false; }
                     else alert('Failed to save manual edits to the database.');
                 } catch (e) { alert('Invalid JSON formatting! Please fix syntax errors before saving.'); }

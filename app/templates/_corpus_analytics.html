@@ -1,0 +1,106 @@
+<div class="flex-1 grid grid-cols-12 divide-x divide-slate-200 min-h-0">
+    
+    <div class="col-span-4 bg-slate-50 flex flex-col h-full min-h-0">
+        <div class="p-5 border-b border-slate-200 shrink-0 bg-slate-100">
+            <h3 class="font-black text-slate-800 text-lg flex items-center gap-2">
+                🎯 Analytics Filters
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">Narrow down the vocabulary by subject or specific exams.</p>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-5 space-y-5">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Subject</label>
+                <select x-model="analyticsFilters.subject_id" @change="fetchFrequencies(1)" class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5 outline-none shadow-sm">
+                    <option value="">All Subjects</option>
+                    <template x-for="sub in analyticsSubjects" :key="sub.id">
+                        <option :value="sub.id" x-text="sub.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Exam Type</label>
+                <select x-model="analyticsFilters.exam_type_id" @change="analyticsExamTypeChanged()" class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5 outline-none shadow-sm">
+                    <option value="">All Categories</option>
+                    <template x-for="type in analyticsHierarchy" :key="type.id">
+                        <option :value="type.id" x-text="type.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Specific Exam</label>
+                <select x-model="analyticsFilters.exam_id" @change="fetchFrequencies(1)" :disabled="!analyticsFilters.exam_type_id" class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5 outline-none shadow-sm disabled:opacity-50 disabled:bg-slate-200">
+                    <option value="">All Exams in Category</option>
+                    <template x-for="exam in analyticsAvailableExams" :key="exam.id">
+                        <option :value="exam.id" x-text="exam.name"></option>
+                    </template>
+                </select>
+            </div>
+            
+            <button @click="resetAnalyticsFilters()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition-colors">
+                Reset Filters
+            </button>
+        </div>
+    </div>
+
+    <div class="col-span-8 bg-white h-full flex flex-col relative min-h-0">
+        
+        <div class="px-8 py-5 border-b border-slate-100 bg-white shrink-0 z-20 shadow-sm flex justify-between items-center">
+            <div>
+                <h3 class="text-2xl font-black text-slate-800">High-Yield Vocabulary</h3>
+                <p class="text-sm font-medium text-slate-500 mt-1">
+                    Showing <span class="font-bold text-indigo-600" x-text="analyticsData.total_items"></span> matching words. Click any word to translate.
+                </p>
+            </div>
+            
+            <div x-show="analyticsData.total_pages > 1" class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-1.5 shadow-sm">
+                <button @click="fetchFrequencies(analyticsData.current_page - 1)" :disabled="analyticsData.current_page === 1" class="p-1.5 bg-white hover:bg-slate-100 rounded text-slate-600 disabled:opacity-50 shadow-sm transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <span class="text-xs font-bold text-slate-500 px-2">Page <span x-text="analyticsData.current_page"></span> / <span x-text="analyticsData.total_pages"></span></span>
+                <button @click="fetchFrequencies(analyticsData.current_page + 1)" :disabled="analyticsData.current_page === analyticsData.total_pages" class="p-1.5 bg-white hover:bg-slate-100 rounded text-slate-600 disabled:opacity-50 shadow-sm transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto bg-slate-50 p-6 min-h-0 relative">
+            <div x-show="loadingAnalytics" class="absolute inset-0 bg-slate-50/80 flex items-center justify-center z-10 backdrop-blur-sm">
+                <svg class="animate-spin h-10 w-10 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <template x-for="(word, index) in analyticsData.words" :key="word.id">
+                    <div @click="openDictionaryPopup(word.lemma)" class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-indigo-300 transition cursor-pointer group flex flex-col justify-between h-full">
+                        
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-black text-lg text-slate-800 group-hover:text-indigo-600 transition-colors" x-text="word.lemma"></span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded" x-text="word.pos"></span>
+                        </div>
+                        
+                        <div class="flex justify-between items-end mt-4">
+                            <div class="flex gap-1">
+                                <span x-show="word.cefr_level" class="text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 px-1.5 py-0.5 rounded" x-text="word.cefr_level"></span>
+                                <span x-show="word.is_awl" class="text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100 px-1.5 py-0.5 rounded">AWL</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-slate-400 block mb-[-2px]">Frequency</span>
+                                <span class="font-black text-slate-700" x-text="word.freq"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            
+            <template x-if="analyticsData.words && analyticsData.words.length === 0 && !loadingAnalytics">
+                <div class="text-center py-20 text-slate-400">
+                    <div class="text-5xl mb-4">📭</div>
+                    <p class="font-medium">No vocabulary found matching these filters.</p>
+                </div>
+            </template>
+        </div>
+
+    </div>
+</div>

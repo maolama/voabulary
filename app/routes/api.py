@@ -11,6 +11,7 @@ from datetime import datetime, date
 from sqlalchemy import func
 import json
 from ..llm.service import LLMService
+from ..services.corpus_service import CorpusService
 
 bp = Blueprint('api', __name__)
 
@@ -361,3 +362,91 @@ def import_word_json(word_id):
         return jsonify({'error': 'Missing custom_data key in JSON'}), 400
     except Exception as e:
         return jsonify({'error': f'Failed to parse JSON: {str(e)}'}), 500
+
+@bp.route('/words/<int:word_id>/corpus/filters', methods=['GET'])
+def get_corpus_filters(word_id):
+    filters = CorpusService.get_filters()
+    return jsonify({'status': 'success', 'data': filters})
+
+@bp.route('/words/<int:word_id>/corpus', methods=['GET'])
+def get_academic_corpus(word_id):
+    word = SavedWord.query.get_or_404(word_id)
+    page = int(request.args.get('page', 1))
+    exam_type = request.args.get('exam_type', 'all')
+    
+    data = CorpusService.get_paginated_sentences(word.word, exam_type, page)
+    
+    if data is None:
+        return jsonify({'status': 'missing_db'}), 404
+        
+    return jsonify({'status': 'success', 'data': data})
+
+@bp.route('/corpus/passage/<int:section_id>', methods=['GET'])
+def get_corpus_passage(section_id):
+    data = CorpusService.get_passage(section_id)
+    if data is None:
+        return jsonify({'status': 'error', 'message': 'Passage not found'}), 404
+    return jsonify({'status': 'success', 'data': data})
+
+
+@bp.route('/corpus/explorer/hierarchy', methods=['GET'])
+def get_corpus_hierarchy():
+    data = CorpusService.get_explorer_hierarchy()
+    return jsonify({'status': 'success', 'data': data})
+
+@bp.route('/corpus/explorer/sections', methods=['GET'])
+def get_corpus_sections():
+    exam_id = request.args.get('exam_id', type=int)
+    page = request.args.get('page', 1, type=int)
+    
+    if not exam_id:
+        return jsonify({'status': 'error', 'message': 'Missing exam_id'}), 400
+        
+    data = CorpusService.get_explorer_sections(exam_id, page)
+    return jsonify({'status': 'success', 'data': data})
+
+@bp.route('/corpus/lemma', methods=['GET'])
+def get_corpus_lemma():
+    word = request.args.get('word', '').strip()
+    if not word:
+        return jsonify({'status': 'error', 'message': 'No word provided'}), 400
+        
+    lemma = CorpusService.get_lemma(word)
+    return jsonify({'status': 'success', 'lemma': lemma})
+
+@bp.route('/corpus/analytics/filters', methods=['GET'])
+def get_analytics_filters():
+    subjects = CorpusService.get_analytics_filters()
+    # We also reuse the hierarchy so the frontend can populate Exam Types and Exams
+    hierarchy = CorpusService.get_explorer_hierarchy()
+    return jsonify({
+        'status': 'success', 
+        'data': {
+            'subjects': subjects,
+            'hierarchy': hierarchy
+        }
+    })
+
+@bp.route('/corpus/analytics/frequencies', methods=['GET'])
+def get_frequencies():
+    page = request.args.get('page', 1, type=int)
+    exam_type_id = request.args.get('exam_type_id', '')
+    exam_id = request.args.get('exam_id', '')
+    subject_id = request.args.get('subject_id', '')
+    
+    # Convert empty strings to None for the backend
+    exam_type_id = int(exam_type_id) if exam_type_id else None
+    exam_id = int(exam_id) if exam_id else None
+    subject_id = int(subject_id) if subject_id else None
+
+    data = CorpusService.get_dynamic_frequencies(exam_type_id, exam_id, subject_id, page)
+    return jsonify({'status': 'success', 'data': data})
+
+@bp.route('/corpus/analytics/collocations', methods=['GET'])
+def get_word_collocations():
+    lemma = request.args.get('word', '').strip()
+    if not lemma:
+        return jsonify({'status': 'error', 'message': 'Missing word'}), 400
+        
+    data = CorpusService.get_collocations(lemma)
+    return jsonify({'status': 'success', 'data': data})
