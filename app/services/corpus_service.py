@@ -42,8 +42,8 @@ class CorpusService:
         return exam_types
 
     @staticmethod
-    def get_paginated_sentences(lemma: str, exam_type_id: str = None, page: int = 1, per_page: int = 10):
-        """Fetches all occurrences of ANY form of the lemma, with pagination and filtering."""
+    def get_paginated_sentences(lemma: str, exam_type_id=None, exam_id=None, subject_id=None, page: int = 1, per_page: int = 10):
+        """Fetches occurrences of a lemma, respecting all analytics filters."""
         conn = CorpusService.get_connection()
         if not conn: return None
 
@@ -62,15 +62,21 @@ class CorpusService:
         """
         params = [lemma]
 
-        if exam_type_id and exam_type_id != 'all':
+        if exam_type_id:
             base_query += " AND et.id = ?"
             params.append(exam_type_id)
+        if exam_id:
+            base_query += " AND e.id = ?"
+            params.append(exam_id)
+        if subject_id:
+            base_query += " AND sec.subject_id = ?"
+            params.append(subject_id)
 
-        # Get Total Count
+        # Total Count
         cursor.execute(f"SELECT COUNT(DISTINCT s.id) {base_query}", params)
         total_items = cursor.fetchone()[0]
 
-        # Get Paginated Data
+        # Paginated Data
         data_query = f"""
             SELECT s.id as sentence_id, s.raw_text, sec.id as section_id, sec.name as section_name, 
                    e.name as exam_name, et.name as exam_type, wo.original_format
@@ -100,32 +106,70 @@ class CorpusService:
         return {
             "sentences": sentences,
             "total_items": total_items,
-            "total_pages": (total_items + per_page - 1) // per_page,
+            "total_pages": max(1, (total_items + per_page - 1) // per_page),
             "current_page": page
         }
 
     @staticmethod
     def get_passage(section_id: int):
-        """Fetches the complete reading passage."""
+        """Fetches the complete reading passage, grouped by paragraphs, with CEFR mapping."""
         conn = CorpusService.get_connection()
         if not conn: return None
 
         cursor = conn.cursor()
         cursor.execute("SELECT name, difficulty, full_text FROM Sections WHERE id = ?", (section_id,))
         sec = cursor.fetchone()
-        conn.close()
         
-        if not sec: return None
+        if not sec: 
+            conn.close()
+            return None
+
+        # 1. THE X-RAY ENGINE
+        cursor.execute("""
+            SELECT DISTINCT LOWER(wo.original_format) as word_form, v.cefr_level 
+            FROM Vocabulary v
+            JOIN Word_Occurrences wo ON v.id = wo.word_id
+            JOIN Sentences s ON wo.sentence_id = s.id
+            JOIN Paragraphs p ON s.paragraph_id = p.id
+            WHERE p.section_id = ? AND v.cefr_level IS NOT NULL
+        """, (section_id,))
+        cefr_mapping = {row["word_form"]: row["cefr_level"] for row in cursor.fetchall()}
+
+        # 2. THE HIGHLIGHT ENGINE (Now grouped by Paragraphs!)
+        cursor.execute("""
+            SELECT p.id as p_id, s.id as s_id, s.raw_text 
+            FROM Paragraphs p
+            LEFT JOIN Sentences s ON s.paragraph_id = p.id
+            WHERE p.section_id = ?
+            ORDER BY p.block_order ASC, s.sentence_order ASC
+        """, (section_id,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+
+        paragraphs = []
+        current_p_id = None
+        current_p = None
+
+        for r in rows:
+            if r["p_id"] != current_p_id:
+                if current_p:
+                    paragraphs.append(current_p)
+                current_p_id = r["p_id"]
+                current_p = {"id": current_p_id, "sentences": []}
+            
+            if r["s_id"]:
+                current_p["sentences"].append({"id": r["s_id"], "text": r["raw_text"]})
+                
+        if current_p:
+            paragraphs.append(current_p)
 
         return {
             "section_name": sec["name"],
             "difficulty": sec["difficulty"],
-            "sentences": [
-                {
-                    "id": "full-text", 
-                    "text": sec["full_text"]
-                }
-            ]
+            "full_text": sec["full_text"],  # Add this back for the main Explorer!
+            "cefr_mapping": cefr_mapping,
+            "paragraphs": paragraphs        # Use grouped paragraphs instead of a flat list
         }
     
     @staticmethod
@@ -317,32 +361,31 @@ class CorpusService:
     @staticmethod
     def get_collocations(lemma: str, limit: int = 30):
         """
-        Finds words that frequently travel together using the dependency parsing tree.
-        Checks both directions: when the target word is the head, and when it is the dependent.
+        Finds collocations based on lexical proximity (words appearing near each other).
+        Fallback for databases without dependency head_word_id links.
         """
         conn = CorpusService.get_connection()
-        if not conn: return None
+        if not conn: return []
         cursor = conn.cursor()
 
-        # This amazing query leverages the head_word_id to find grammatically connected words
+        # We use a window of 3 (current word + 2 before or 2 after)
         query = """
             SELECT 
                 v_other.lemma as colloc_lemma, 
                 v_other.pos as colloc_pos, 
-                wo_other.dependency_role, 
+                'Proximity' as dependency_role, 
                 COUNT(*) as freq
             FROM Vocabulary v_target
             JOIN Word_Occurrences wo_target ON v_target.id = wo_target.word_id
-            JOIN Word_Occurrences wo_other ON (
-                wo_target.id = wo_other.head_word_id OR 
-                wo_target.head_word_id = wo_other.id
-            )
+            JOIN Word_Occurrences wo_other ON wo_target.sentence_id = wo_other.sentence_id
             JOIN Vocabulary v_other ON wo_other.word_id = v_other.id
             WHERE v_target.lemma = ? COLLATE NOCASE
-              AND wo_target.sentence_id = wo_other.sentence_id
-              AND v_other.pos NOT IN ('PUNCT', 'SPACE', 'SYM', 'X', 'DET', 'CCONJ', 'SCONJ', 'ADP', 'PRON', 'PART')
+              -- Distance logic: ensure words are close but not the same word
+              AND ABS(wo_target.id - wo_other.id) BETWEEN 1 AND 3
+              -- Filter structural noise
+              AND v_other.pos NOT IN ('PUNCT', 'SPACE', 'SYM', 'X', 'DET', 'CCONJ', 'SCONJ', 'ADP', 'PRON', 'PART', 'NUM')
               AND v_other.lemma != v_target.lemma
-            GROUP BY v_other.lemma, wo_other.dependency_role
+            GROUP BY v_other.lemma
             ORDER BY freq DESC
             LIMIT ?
         """

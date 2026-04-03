@@ -35,10 +35,11 @@ def htmx_search():
     # DEBUG: print(f"Search for {query}: word_id is {word_id}") # Check your console!
 
     return render_template('components/word_card.html', 
-                           query=query, 
-                           results=results, 
-                           is_saved=(saved_word is not None),
-                           word_id=word_id) # <-- This MUST be passed
+                            query=query, 
+                            results=results, 
+                            is_saved=(saved_word is not None),
+                            word_id=word_id,
+                            saved_word=saved_word) # <-- ADD THIS LINE
 
 @bp.route('/save_word', methods=['POST'])
 def save_word():
@@ -66,7 +67,8 @@ def save_word():
                                query=word_text, 
                                results=results, 
                                is_saved=True,
-                               word_id=new_word.id)
+                               word_id=new_word.id,
+                               saved_word=new_word) # <-- ADD THIS LINE
                                
     except Exception as e:
         db.session.rollback()
@@ -374,7 +376,15 @@ def get_academic_corpus(word_id):
     page = int(request.args.get('page', 1))
     exam_type = request.args.get('exam_type', 'all')
     
-    data = CorpusService.get_paginated_sentences(word.word, exam_type, page)
+    # Safely convert to integer if an actual exam type is selected
+    exam_type_id = int(exam_type) if exam_type != 'all' and exam_type else None
+    
+    # Force keyword arguments to match the updated CorpusService method!
+    data = CorpusService.get_paginated_sentences(
+        lemma=word.word, 
+        exam_type_id=exam_type_id, 
+        page=page
+    )
     
     if data is None:
         return jsonify({'status': 'missing_db'}), 404
@@ -450,3 +460,43 @@ def get_word_collocations():
         
     data = CorpusService.get_collocations(lemma)
     return jsonify({'status': 'success', 'data': data})
+
+@bp.route('/corpus/sentences', methods=['GET'])
+def get_corpus_sentences():
+    """Endpoint for the 'Real Context' tab in the dictionary modal."""
+    lemma = request.args.get('word', '').strip()
+    page = request.args.get('page', 1, type=int)
+    
+    exam_type_id = request.args.get('exam_type_id', '')
+    exam_id = request.args.get('exam_id', '')
+    subject_id = request.args.get('subject_id', '')
+    
+    exam_type_id = int(exam_type_id) if exam_type_id else None
+    exam_id = int(exam_id) if exam_id else None
+    subject_id = int(subject_id) if subject_id else None
+
+    if not lemma:
+        return jsonify({'status': 'error', 'message': 'Missing word'}), 400
+
+    data = CorpusService.get_paginated_sentences(lemma, exam_type_id, exam_id, subject_id, page)
+    return jsonify({'status': 'success', 'data': data})
+
+@bp.route('/corpus/steal_sentence', methods=['POST'])
+def steal_sentence():
+    """Saves a real academic sentence into the custom_data JSON field of a SavedWord."""
+    data = request.get_json()
+    word_text = data.get('word', '').strip().lower()
+    sentence = data.get('sentence', '').strip()
+
+    word = SavedWord.query.filter_by(word=word_text).first()
+    if not word:
+        return jsonify({'status': 'error', 'message': 'You must add this word to your Empire first!'}), 400
+
+    # Initialize custom_data if it's currently None
+    custom_data = word.custom_data or {}
+    custom_data['cloze_sentence'] = sentence
+    
+    word.custom_data = custom_data
+    db.session.commit()
+    
+    return jsonify({'status': 'success', 'message': 'Sentence stolen!'})

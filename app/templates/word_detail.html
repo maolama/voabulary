@@ -40,35 +40,7 @@
     <div class="transition-all duration-500 ease-in-out" :class="isPassageOpen ? 'pr-0 md:pr-[32rem]' : ''">
         <div class="max-w-4xl mx-auto mt-8 vocab-app-wrapper">
             
-            <div class="mb-4">
-                <a href="/words" class="text-indigo-600 hover:underline">&larr; Back to Archive</a>
-            </div>
-            
-            <div class="flex justify-between items-end mb-6">
-                <h1 class="text-5xl font-black text-slate-900" x-text="targetWord"></h1>
-                <button onclick="window.playTTSAudio('{{ word.word }}')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-full shadow-sm transition-transform active:scale-95">
-                    🔊 Listen
-                </button>
-            </div>
-
-            <div class="grid grid-cols-4 gap-4 mb-8">
-                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
-                    <p class="text-xs text-slate-500 uppercase font-bold">Total Reviews</p>
-                    <p class="text-2xl font-bold text-slate-800">{{ word.total_reviews }}</p>
-                </div>
-                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
-                    <p class="text-xs text-slate-500 uppercase font-bold">Current Streak</p>
-                    <p class="text-2xl font-bold text-blue-600">{{ word.repetitions }}</p>
-                </div>
-                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
-                    <p class="text-xs text-slate-500 uppercase font-bold">Next Interval</p>
-                    <p class="text-2xl font-bold text-emerald-600">{{ word.interval }} days</p>
-                </div>
-                <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
-                    <p class="text-xs text-slate-500 uppercase font-bold">Ease Factor</p>
-                    <p class="text-2xl font-bold text-amber-500">{{ "%.2f"|format(word.ease_factor) }}</p>
-                </div>
-            </div>
+            {% include 'word_detail/_header_stats.html' %}
 
             <div class="border-b border-slate-200 mb-6">
                 <nav class="-mb-px flex space-x-6 overflow-x-auto">
@@ -84,311 +56,42 @@
                     
                     <button x-show="hasCorpus" x-cloak @click="activeTab = 'corpus'" :class="activeTab === 'corpus' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'" class="whitespace-nowrap pb-4 px-1 border-b-2 font-bold text-lg transition flex items-center gap-2 animate-fade-in-up">
                         🎓 Academic Context
-                        <span class="bg-indigo-100 text-indigo-700 text-xs py-0.5 px-2 rounded-full" x-text="corpusData.sentences ? corpusData.sentences.length : 0"></span>
+                        <span class="bg-indigo-100 text-indigo-700 text-xs py-0.5 px-2 rounded-full ml-1" x-text="corpusData.sentences ? corpusData.sentences.length : 0"></span>
                     </button>
                 </nav>
             </div>
 
-            <div x-show="activeTab === 'definitions'" class="space-y-6">
-                {% for result in results %}
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" x-data="{ expanded: true }">
-                    <div class="px-6 flex justify-between items-center border-b border-slate-100 cursor-pointer hover:brightness-95 transition-all" 
-                        style="background-color: {{ result.color }}; height: 60px; min-height: 60px;" @click="expanded = !expanded">
-                        <div class="flex items-center space-x-3">
-                            <svg class="w-5 h-5 text-slate-700 transition-transform duration-300" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            <div class="flex flex-col justify-center">
-                                <span class="text-sm font-bold text-slate-800 uppercase tracking-wider">{{ result.name }}</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center">
-                            <button type="button" onclick="event.stopPropagation(); window.manualToggle('{{ result.name }}', this)" data-mode="full" style="height: 40px; padding: 0 20px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: block !important; visibility: visible !important; background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; transition: all 0.2s;">
-                                🎯 SHOW PINNED ONLY
-                            </button>
-                        </div>
-                    </div>
-                    <div class="px-6 py-4" x-show="expanded" x-transition>
-                        <iframe src="/entry/{{ result.name }}/{{ result.safe_query }}?word_id={{ word.id }}" class="w-full border-none overflow-hidden min-h-[100px]" id="iframe-{{ result.name }}" scrolling="no"></iframe>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div x-show="activeTab === 'relations'" x-cloak class="grid grid-cols-2 gap-8">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 class="text-xl font-bold text-emerald-700 mb-4 flex items-center">Synonyms</h3>
-                    <form @submit.prevent="addRelation('synonym')" class="flex mb-4">
-                        <input type="text" x-model="newSynonym" placeholder="Add synonym..." class="flex-grow bg-slate-50 border border-slate-200 rounded-l-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
-                        <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded-r-lg font-bold hover:bg-emerald-700 transition">+</button>
-                    </form>
-                    <div class="flex flex-wrap gap-2">
-                        <template x-for="item in manualSynonyms" :key="item.id">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
-                                <span x-text="item.word"></span>
-                                <button @click="deleteRelation('synonym', item.id)" class="ml-1.5 text-emerald-600 hover:text-rose-600 focus:outline-none">✕</button>
-                            </span>
-                        </template>
-                        <template x-for="word in autoSynonyms" :key="word">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80"><span x-text="word"></span></span>
-                        </template>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 class="text-xl font-bold text-rose-700 mb-4 flex items-center">Antonyms</h3>
-                    <form @submit.prevent="addRelation('antonym')" class="flex mb-4">
-                        <input type="text" x-model="newAntonym" placeholder="Add antonym..." class="flex-grow bg-slate-50 border border-slate-200 rounded-l-lg px-4 py-2 focus:outline-none focus:border-rose-500">
-                        <button type="submit" class="bg-rose-600 text-white px-4 py-2 rounded-r-lg font-bold hover:bg-rose-700 transition">+</button>
-                    </form>
-                    <div class="flex flex-wrap gap-2">
-                        <template x-for="item in manualAntonyms" :key="item.id">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-rose-100 text-rose-800 border border-rose-200 shadow-sm">
-                                <span x-text="item.word"></span>
-                                <button @click="deleteRelation('antonym', item.id)" class="ml-1.5 text-rose-600 hover:text-rose-900 focus:outline-none">✕</button>
-                            </span>
-                        </template>
-                        <template x-for="word in autoAntonyms" :key="word">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 opacity-80"><span x-text="word"></span></span>
-                        </template>
-                    </div>
-                </div>
-            </div>
+            {% include 'word_detail/_tab_definitions.html' %}
+            
+            {% include 'word_detail/_tab_relations.html' %}
 
             <div x-show="activeTab === 'corpus'" x-cloak>
                 {% include '_academic_corpus.html' %}
             </div>
 
-            <div x-show="activeTab === 'anchor'" x-cloak>
-                <div x-data="notesEngine({{ word.id }}, JSON.parse(document.getElementById('safedata-custom').textContent))">
-                    
-                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 border-b border-slate-200 pb-3 gap-4">
-                        <div class="text-sm font-medium text-slate-500">
-                            Your personalized notes, mnemonics, and translations.
-                        </div>
-                        
-                        <div class="flex flex-wrap items-center gap-3">
-                            <button @click="$dispatch('open-typography')" class="text-xs font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition flex items-center gap-1 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm mr-2">
-                                🎨 Theme Studio
-                            </button>
+            {% include 'word_detail/_tab_anchor.html' %}
 
-                            <a :href="`/api/words/${wordId}/export`" target="_blank" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                                📥 Export
-                            </a>
-                            
-                            <label class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm cursor-pointer">
-                                📤 Import
-                                <input type="file" accept=".json" class="hidden" @change="importJsonFile($event)">
-                            </label>
-
-                            <button @click="openEditor()" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 border-l pl-3 border-slate-200">
-                                ✏️ Edit
-                            </button>
-                            
-                            <button @click="fillWithAI()" :disabled="isGenerating" class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow hover:shadow-md hover:scale-105 transition disabled:opacity-50 flex items-center gap-2">
-                                <span x-show="!isGenerating">✨ Auto-Fill with AI</span>
-                                <span x-show="isGenerating" class="flex items-center gap-2">
-                                    <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    Consulting AI...
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div x-show="customData && !isGenerating" class="space-y-6 animate-fade-in-up">
-                        <template x-for="posBlock in customData" :key="posBlock.partOfSpeech">
-                            <div class="bg-white rounded-2xl p-6 border-l-4 border-indigo-500 shadow-sm">
-                                
-                                <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
-                                    <span class="text-lg font-black text-indigo-800 uppercase tracking-widest" x-text="posBlock.partOfSpeech"></span>
-                                    <div class="flex space-x-3 text-sm font-mono text-slate-500">
-                                        <span x-show="posBlock.usPronunciation" x-text="'US: ' + posBlock.usPronunciation"></span>
-                                        <span x-show="posBlock.ukPronunciation" x-text="'UK: ' + posBlock.ukPronunciation"></span>
-                                    </div>
-                                </div>
-
-                                <div class="space-y-4">
-                                    <template x-for="(meaning, index) in posBlock.meanings" :key="index">
-                                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                                            <div class="flex justify-between items-start gap-4">
-                                                <p class="txt-def-en text-slate-800" x-text="meaning.definition"></p>
-                                                <span x-show="meaning.translation" class="txt-def-fa shrink-0 bg-rose-100 text-rose-800 px-3 py-1 rounded-lg shadow-sm" dir="rtl" x-text="meaning.translation"></span>
-                                            </div>
-                                            <p class="txt-ex-en text-slate-600 mt-2" x-show="meaning.example" x-text="`&quot;${meaning.example}&quot;`"></p>
-                                            <div x-show="meaning.mnemonic" class="txt-note-en mt-4 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg flex items-start gap-3 shadow-inner">
-                                                <span class="text-xl font-sans">💡</span>
-                                                <span class="pt-0.5" x-text="meaning.mnemonic"></span>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-
-                                <div x-show="posBlock.generalExamples && posBlock.generalExamples.length > 0" class="mt-6">
-                                    <span class="font-bold text-slate-400 uppercase text-xs mb-2 block">General Examples</span>
-                                    <ul class="space-y-2">
-                                        <template x-for="(ex, index) in posBlock.generalExamples" :key="index">
-                                            <li>
-                                                <span class="txt-ex-en text-slate-700 block mb-0.5" x-text="`• ${ex.example}`"></span>
-                                                <span class="txt-ex-fa text-slate-500 block pl-3" dir="rtl" x-text="ex.translation"></span>
-                                            </li>
-                                        </template>
-                                    </ul>
-                                </div>
-
-                                <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-6">
-                                    <div x-show="posBlock.synonyms && posBlock.synonyms.length > 0">
-                                        <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Synonyms</span>
-                                        <div class="flex flex-wrap gap-1">
-                                            <template x-for="syn in posBlock.synonyms">
-                                                <span class="txt-rel-en bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md" x-text="syn"></span>
-                                            </template>
-                                        </div>
-                                    </div>
-                                    <div x-show="posBlock.collocations && posBlock.collocations.length > 0">
-                                        <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Collocations</span>
-                                        <div class="flex flex-wrap gap-1">
-                                            <template x-for="col in posBlock.collocations">
-                                                <span class="txt-rel-en bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded-md" x-text="col"></span>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div x-show="posBlock.notes && posBlock.notes.length > 0" class="mt-4 p-4 bg-slate-50 rounded-xl text-slate-700 border border-slate-200">
-                                    <span class="font-bold text-slate-800 mb-2 block text-sm">📝 Notes & Tips:</span>
-                                    <ul class="space-y-1 pl-1">
-                                        <template x-for="(note, nIndex) in posBlock.notes" :key="nIndex">
-                                            <li class="flex items-start gap-2">
-                                                <span class="text-indigo-400 mt-0.5 text-sm">•</span>
-                                                <span class="txt-note-en" x-text="note"></span>
-                                            </li>
-                                        </template>
-                                    </ul>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-
-                    <div x-show="!customData && !isGenerating" class="text-center py-12 bg-white border-2 border-dashed border-slate-200 rounded-2xl">
-                        <div class="text-5xl mb-4">🪹</div>
-                        <h3 class="text-slate-800 text-xl font-bold mb-2">No Brain Anchors yet.</h3>
-                        <p class="text-slate-500 text-sm mb-6 max-w-md mx-auto">Use the AI Auto-Fill to generate a rich, bilingual profile, or import your legacy Google Sheets JSON.</p>
-                        <button @click="fillWithAI()" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl shadow-md hover:bg-indigo-700 transition">
-                            Generate Profile
-                        </button>
-                    </div>
-
-                    <div x-show="isEditing" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-sm" x-cloak>
-                        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col h-[85vh] m-4 animate-fade-in-up">
-                            <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
-                                <h3 class="font-black text-slate-800">✏️ Raw JSON Editor</h3>
-                                <button @click="isEditing = false" class="text-slate-400 hover:text-rose-500 font-bold px-2 py-1">Close ✕</button>
-                            </div>
-                            <div class="flex-grow p-4 bg-slate-900">
-                                <textarea x-model="rawEditorContent" class="txt-note-en w-full h-full bg-slate-900 text-emerald-400 p-2 focus:outline-none resize-none" spellcheck="false"></textarea>
-                            </div>
-                            <div class="p-4 bg-slate-50 rounded-b-2xl flex justify-between items-center border-t border-slate-200">
-                                <button @click="saveManualEdits()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-8 rounded-lg shadow transition">
-                                    Save Changes
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div x-data="typographyStudio()" @open-typography.window="isOpen = true">
-                        <div x-show="isOpen" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[200] backdrop-blur-sm" x-cloak>
-                            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col h-[85vh] m-4 animate-fade-in-up" @click.away="isOpen = false">
-                                
-                                <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex justify-between items-center rounded-t-2xl">
-                                    <h3 class="font-black text-white text-lg flex items-center gap-2">🎨 Theme & Typography Studio</h3>
-                                    <div class="flex items-center gap-4">
-                                        <button @click="resetDefaults()" class="text-sm font-bold text-indigo-300 hover:text-white">Reset to Defaults</button>
-                                        <button @click="isOpen = false" class="text-slate-400 hover:text-rose-500 font-bold text-xl px-2 py-1">✕</button>
-                                    </div>
-                                </div>
-
-                                <div class="flex-grow overflow-y-auto p-6 bg-slate-50 flex flex-col gap-6">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {% macro font_controls(title, area, lang) %}
-                                        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                                            <h4 class="font-bold text-slate-700 uppercase tracking-widest text-xs mb-4 border-b border-slate-100 pb-2">{{ title }}</h4>
-                                            <label class="block text-xs font-bold text-slate-500 mb-1">Font Family</label>
-                                            <input type="text" x-model="settings.{{area}}.{{lang}}.font" list="fonts-list-{{lang}}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 mb-4 outline-none">
-                                            <div class="flex gap-4 mb-4">
-                                                <div class="flex-1">
-                                                    <label class="block text-xs font-bold text-slate-500 mb-1">Size (px)</label>
-                                                    <input type="number" x-model="settings.{{area}}.{{lang}}.size" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                </div>
-                                                <div class="flex-1">
-                                                    <label class="block text-xs font-bold text-slate-500 mb-1">Weight</label>
-                                                    <select x-model="settings.{{area}}.{{lang}}.weight" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                        <option value="400">Regular (400)</option>
-                                                        <option value="500">Medium (500)</option>
-                                                        <option value="600">Semibold (600)</option>
-                                                        <option value="700">Bold (700)</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="flex items-center">
-                                                <input type="checkbox" id="{{area}}_{{lang}}_italic" x-model="settings.{{area}}.{{lang}}.italic" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500">
-                                                <label for="{{area}}_{{lang}}_italic" class="ml-2 text-sm font-medium text-slate-700">Enable Italic Style</label>
-                                            </div>
-                                        </div>
-                                        {% endmacro %}
-
-                                        {{ font_controls('📚 Definitions (English)', 'def', 'en') }}
-                                        {{ font_controls('📚 Definitions (Persian)', 'def', 'fa') }}
-                                        {{ font_controls('💬 Examples (English)', 'ex', 'en') }}
-                                        {{ font_controls('💬 Examples (Persian)', 'ex', 'fa') }}
-                                        {{ font_controls('🔗 Relations/Tags (English)', 'rel', 'en') }}
-                                        {{ font_controls('🔗 Relations (Persian)', 'rel', 'fa') }}
-                                        {{ font_controls('📝 Notes (English)', 'note', 'en') }}
-                                        {{ font_controls('🎓 Academic Corpus (English)', 'corp', 'en') }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <datalist id="fonts-list-en">
-                            <option value='"Segoe UI", system-ui, sans-serif'>Windows Default</option>
-                            <option value='"Times New Roman", serif'>Times New Roman</option>
-                            <option value='Arial, sans-serif'>Arial</option>
-                        </datalist>
-                        <datalist id="fonts-list-fa">
-                            <option value='"Vazirmatn", Tahoma, sans-serif'>Vazirmatn</option>
-                            <option value='Tahoma, sans-serif'>Tahoma</option>
-                        </datalist>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
-    <div class="fixed inset-y-0 right-0 w-full md:w-[32rem] bg-slate-50 shadow-[-20px_0_40px_rgba(0,0,0,0.1)] z-[100] transform transition-transform duration-500 ease-in-out flex flex-col border-l border-slate-200" 
-         :class="isPassageOpen ? 'translate-x-0' : 'translate-x-full'" x-cloak>
-        
-        <div class="px-6 py-5 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
-            <div>
-                <h3 class="font-black text-slate-800 text-lg flex items-center gap-2">📖 Reading Passage</h3>
-                <p class="text-xs font-bold text-indigo-600 mt-1 uppercase tracking-widest" x-text="passageData.section_name"></p>
-            </div>
-            <button @click="isPassageOpen = false" class="bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
-                <span class="font-bold text-xl">✕</span>
-            </button>
-        </div>
+    {% include 'word_detail/_passage_slideover.html' %}
+    
+    {% include '_dictionary_modal.html' %}
 
-        <div class="flex-grow overflow-y-auto p-6 md:p-8 bg-white txt-corp-en leading-loose text-slate-800 relative whitespace-pre-wrap">
-            
-            <div x-show="loadingPassage" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
-                <svg class="animate-spin h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            </div>
-
-            <template x-for="sent in passageData.sentences" :key="sent.id">
-                <span :id="'sent-' + sent.id" 
-                      class="transition-colors duration-700"
-                      :class="sent.id === targetSentenceId ? 'bg-amber-100/80 rounded py-1 px-0.5 shadow-[0_0_0_2px_rgba(254,243,199,0.8)]' : ''"
-                      x-html="sent.id === targetSentenceId ? highlightWord(sent.text, targetWordForm) : sent.text + ' '">
-                </span>
-            </template>
-        </div>
+    <div x-show="historyStack.length > 0" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-10"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-10"
+         class="fixed bottom-8 left-8 z-[1000]" x-cloak>
+        <button @click="goBackInHistory()" class="bg-slate-900 hover:bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 font-bold transition-all hover:scale-105 border-4 border-white/10">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Go Back
+        </button>
     </div>
+
 </div>
 
 <script>
@@ -463,7 +166,7 @@
         }
     });
 
-    // Main App Data Engine (Now with Corpus Sliding Panel Logic)
+    // Main App Data Engine (Now Upgraded to State Machine!)
     document.addEventListener('alpine:init', () => {
         Alpine.data('wordRelations', (wordId, wordText) => ({
             activeTab: 'definitions',
@@ -485,6 +188,18 @@
             loadingPassage: false,
             passageData: { section_name: '', sentences: [] },
             targetSentenceId: null,
+            selectedSectionId: null,
+
+            // --- THE RABBIT HOLE STATE MACHINE ---
+            dictionaryModalOpen: false,
+            modalTab: 'dictionary',
+            selectedWord: '',
+            isModalLoading: false,
+            contextData: { sentences: [] },
+            collocationData: [],
+            
+            historyStack: [],
+            currentViewState: { view: 'page' },
 
             init() { 
                 this.fetchRelations(); 
@@ -492,6 +207,133 @@
                 this.fetchCorpus(1);
             },
 
+            // --- NAVIGATION STACK LOGIC ---
+            pushToStack() {
+                const stateStr = JSON.stringify(this.currentViewState);
+                const lastStackStr = this.historyStack.length > 0 ? JSON.stringify(this.historyStack[this.historyStack.length - 1]) : null;
+                if (stateStr !== lastStackStr) {
+                    this.historyStack.push(JSON.parse(stateStr));
+                }
+            },
+
+            goBackInHistory() {
+                if (this.historyStack.length === 0) return;
+                const prevState = this.historyStack.pop();
+                this.currentViewState = prevState;
+
+                if (prevState.view === 'page') {
+                    this.dictionaryModalOpen = false;
+                    this.isPassageOpen = false;
+                } else if (prevState.view === 'modal') {
+                    this.isPassageOpen = false;
+                    this.modalTab = prevState.tab || 'dictionary';
+                    this.openWordMaster(prevState.word, false); 
+                } else if (prevState.view === 'slideover') {
+                    this.dictionaryModalOpen = false;
+                    this.openPassage(prevState.sectionId, prevState.sentenceId, false);
+                }
+            },
+
+            closePassage() {
+                this.isPassageOpen = false;
+                this.historyStack = []; 
+                this.currentViewState = { view: 'page' };
+            },
+            
+            closeDictionaryPopup() {
+                this.dictionaryModalOpen = false;
+                this.selectedWord = '';
+                this.historyStack = [];
+                this.currentViewState = { view: 'page' };
+                setTimeout(() => { document.getElementById('modal-dict-content').innerHTML = ''; }, 300);
+            },
+
+            // --- THE 3-TAB MODAL & CLICK-TO-TRANSLATE LOGIC ---
+            renderClickableText(text) {
+                if (!text) return '';
+                return text.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, '<span class="clickable-word cursor-pointer hover:bg-indigo-100 hover:text-indigo-800 rounded px-0.5 transition-colors">$1</span>');
+            },
+
+            async handleWordClick(event) {
+                if (event.target.tagName.toLowerCase() === 'span' && event.target.classList.contains('clickable-word')) {
+                    const rawWord = event.target.innerText.trim();
+                    const cleanWord = rawWord.replace(/[^a-zA-Z]/g, '').toLowerCase(); 
+                    if (cleanWord) {
+                        let finalWord = cleanWord;
+                        try {
+                            const res = await fetch(`/api/corpus/lemma?word=${cleanWord}`);
+                            const json = await res.json();
+                            if (json.status === 'success' && json.lemma) finalWord = json.lemma;
+                        } catch (e) { }
+                        this.openWordMaster(finalWord, true);
+                    }
+                }
+            },
+
+            async openWordMaster(word, shouldPush = true) {
+                word = word.toLowerCase();
+                if (shouldPush) this.pushToStack();
+                this.currentViewState = { view: 'modal', word: word, tab: this.modalTab || 'dictionary' };
+
+                this.selectedWord = word;
+                this.dictionaryModalOpen = true;
+                this.isModalLoading = true;
+                
+                const contentDiv = document.getElementById('modal-dict-content');
+                try {
+                    const formData = new FormData();
+                    formData.append('query', word);
+                    const response = await fetch('/api/search', { method: 'POST', body: formData });
+                    contentDiv.innerHTML = await response.text();
+                    if (window.htmx) htmx.process(contentDiv);
+                } catch (error) {
+                    contentDiv.innerHTML = '<p class="text-center text-rose-500 font-bold mt-10">Failed to load dictionary.</p>';
+                }
+
+                try {
+                    // Use active filter if set, otherwise fetch broadly
+                    const queryParams = new URLSearchParams({ word: word, per_page: 20 });
+                    if (this.corpusFilter && this.corpusFilter !== 'all') {
+                        queryParams.append('exam_type_id', this.corpusFilter);
+                    }
+                    const ctxRes = await fetch(`/api/corpus/sentences?${queryParams.toString()}`);
+                    const ctxJson = await ctxRes.json();
+                    if (ctxJson.status === 'success') this.contextData = ctxJson.data;
+                } catch (error) { this.contextData = { sentences: [] }; }
+
+                try {
+                    const colRes = await fetch(`/api/corpus/analytics/collocations?word=${word}`);
+                    const colJson = await colRes.json();
+                    if (colJson.status === 'success') this.collocationData = colJson.data;
+                } catch (error) { this.collocationData = []; }
+
+                this.isModalLoading = false;
+            },
+
+            async stealSentence(sentenceText, btnElement) {
+                try {
+                    const response = await fetch('/api/corpus/steal_sentence', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ word: this.selectedWord, sentence: sentenceText })
+                    });
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        btnElement.innerText = '✅ Saved';
+                        btnElement.classList.replace('text-emerald-600', 'text-white');
+                        btnElement.classList.replace('bg-emerald-50', 'bg-emerald-500');
+                    } else {
+                        alert(data.message);
+                    }
+                } catch (e) { alert("Error connecting to server."); }
+            },
+
+            readFullPassage(sectionId, sentenceId, sectionName) {
+                // Opens slideover, highlights the exact sentence, and pushes to stack!
+                this.openPassage(sectionId, sentenceId, true); 
+            },
+
+            // --- EXISTING CORPUS FETCH LOGIC ---
             async fetchCorpusFilters() {
                 try {
                     const res = await fetch(`/api/words/${wordId}/corpus/filters`);
@@ -517,10 +359,15 @@
                 finally { this.corpusLoading = false; }
             },
 
-            async openPassage(sectionId, sentenceId) {
+            async openPassage(sectionId, sentenceId, shouldPush = true) {
+                if (shouldPush) this.pushToStack();
+                this.currentViewState = { view: 'slideover', sectionId: sectionId, sentenceId: sentenceId };
+
                 this.isPassageOpen = true;
                 this.loadingPassage = true;
+                this.selectedSectionId = sectionId;
                 this.targetSentenceId = sentenceId;
+                this.dictionaryModalOpen = false;
 
                 const sentenceObj = this.corpusData.sentences.find(s => s.id === sentenceId);
                 if (sentenceObj) {
@@ -534,9 +381,11 @@
                         this.passageData = json.data;
 
                         setTimeout(() => {
-                            const el = document.getElementById('sent-' + sentenceId);
-                            if (el) {
-                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            if (sentenceId) {
+                                const el = document.getElementById('sent-' + sentenceId);
+                                if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
                             }
                         }, 100);
                     }
@@ -551,6 +400,7 @@
                 return sentence.replace(regex, '<mark class="highlight-word">$1</mark>') + ' ';
             },
 
+            // --- RELATIONS & EDITORS ---
             async fetchRelations() {
                 try {
                     const res = await fetch(`/api/word/${wordId}/relations`);

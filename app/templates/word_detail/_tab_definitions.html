@@ -1,0 +1,23 @@
+<div x-show="activeTab === 'definitions'" class="space-y-6" x-cloak>
+    {% for result in results %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" x-data="{ expanded: true }">
+        <div class="px-6 flex justify-between items-center border-b border-slate-100 cursor-pointer hover:brightness-95 transition-all" 
+             style="background-color: {{ result.color }}; height: 60px; min-height: 60px;" @click="expanded = !expanded">
+            <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-slate-700 transition-transform duration-300" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                <div class="flex flex-col justify-center">
+                    <span class="text-sm font-bold text-slate-800 uppercase tracking-wider">{{ result.name }}</span>
+                </div>
+            </div>
+            <div class="flex items-center">
+                <button type="button" onclick="event.stopPropagation(); window.manualToggle('{{ result.name }}', this)" data-mode="full" style="height: 40px; padding: 0 20px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: block !important; visibility: visible !important; background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; transition: all 0.2s;">
+                    🎯 SHOW PINNED ONLY
+                </button>
+            </div>
+        </div>
+        <div class="px-6 py-4" x-show="expanded" x-transition>
+            <iframe src="/entry/{{ result.name }}/{{ result.safe_query }}?word_id={{ word.id }}" class="w-full border-none overflow-hidden min-h-[100px]" id="iframe-{{ result.name }}" scrolling="no"></iframe>
+        </div>
+    </div>
+    {% endfor %}
+</div>

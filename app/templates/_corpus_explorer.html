@@ -1,0 +1,135 @@
+<div class="flex-1 grid grid-cols-12 divide-x divide-slate-200 min-h-0">
+            
+    <div class="col-span-4 bg-slate-50 flex flex-col h-full min-h-0">
+        <div class="p-5 border-b border-slate-200 shrink-0">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">1. Select an Exam</p>
+            
+            <select x-model="selectedExamType" @change="examTypeChanged()" class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none mb-3 font-bold shadow-sm">
+                <option value="" disabled>Choose Category...</option>
+                <template x-for="type in hierarchy" :key="type.id">
+                    <option :value="type.id" x-text="type.name"></option>
+                </template>
+            </select>
+
+            <select x-model="selectedExam" @change="fetchSections(1)" :disabled="!selectedExamType" class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none font-medium shadow-sm disabled:opacity-50 disabled:bg-slate-100">
+                <option value="" disabled>Choose Exam...</option>
+                <template x-for="exam in availableExams" :key="exam.id">
+                    <option :value="exam.id" x-text="exam.name"></option>
+                </template>
+            </select>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 relative min-h-0">
+            <div x-show="loadingSections" class="absolute inset-0 bg-slate-50/80 flex items-center justify-center z-10 backdrop-blur-sm">
+                <svg class="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </div>
+
+            <template x-if="sectionData.sections && sectionData.sections.length === 0 && selectedExam">
+                <div class="text-center py-8 text-slate-400 text-sm font-medium">No passages found.</div>
+            </template>
+
+            <ul class="space-y-1">
+                <template x-for="sec in sectionData.sections" :key="sec.id">
+                    <li>
+                        <button @click="fetchPassageText(sec.id, sec.name)" 
+                                class="w-full text-left px-4 py-3 rounded-xl text-sm transition-all duration-200 flex flex-col justify-center border"
+                                :class="selectedSectionId === sec.id ? 'bg-indigo-100 text-indigo-900 font-bold border-indigo-200 shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900 border-transparent hover:border-slate-200 hover:shadow-sm'">
+                            <span class="truncate block w-full" x-text="sec.name"></span>
+                            <span class="text-[10px] uppercase tracking-widest mt-1" 
+                                  :class="selectedSectionId === sec.id ? 'text-indigo-500' : 'text-slate-400'" 
+                                  x-show="sec.difficulty" x-text="`Difficulty: ${sec.difficulty}`"></span>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+        </div>
+
+        <div x-show="sectionData.total_pages > 1" class="p-3 border-t border-slate-200 shrink-0 bg-white flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <button @click="fetchSections(sectionData.current_page - 1)" :disabled="sectionData.current_page === 1" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold disabled:opacity-50 text-slate-600 transition">Prev</button>
+            <span class="text-xs font-bold text-slate-500">Page <span x-text="sectionData.current_page"></span> / <span x-text="sectionData.total_pages"></span></span>
+            <button @click="fetchSections(sectionData.current_page + 1)" :disabled="sectionData.current_page === sectionData.total_pages" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold disabled:opacity-50 text-slate-600 transition">Next</button>
+        </div>
+    </div>
+
+    <div class="col-span-8 bg-white h-full flex flex-col relative min-h-0">
+        
+        <div x-show="loadingText" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10 backdrop-blur-sm">
+            <svg class="animate-spin h-10 w-10 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        </div>
+
+        <template x-if="!activePassageText && !loadingText">
+            <div class="flex-1 flex flex-col items-center justify-center text-slate-300">
+                <div class="text-6xl mb-4 opacity-50">📄</div>
+                <p class="font-medium text-sm">Select a passage from the directory to start reading.</p>
+            </div>
+        </template>
+
+        <template x-if="activePassageText">
+            <div class="flex flex-col h-full min-h-0 w-full relative">
+                
+                <div class="px-8 py-5 border-b border-slate-100 bg-white shrink-0 z-20 shadow-sm flex flex-col gap-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-2xl font-serif font-black text-slate-800 truncate" x-text="activePassageName"></h3>
+                        <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-lg border border-indigo-100 shrink-0" x-text="selectedExamTypeName"></span>
+                    </div>
+                    
+                    <div class="flex flex-wrap items-center gap-4 bg-slate-50 border border-slate-200 px-4 py-2 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Font</label>
+                            <input type="text" x-model="settings.font" list="corp-fonts" class="w-40 text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500">
+                            <datalist id="corp-fonts">
+                                <option value='"Times New Roman", Times, serif'>Times New Roman</option>
+                                <option value='Georgia, serif'>Georgia</option>
+                                <option value='"Segoe UI", system-ui, sans-serif'>Segoe UI</option>
+                                <option value='Arial, sans-serif'>Arial</option>
+                                <option value='Consolas, monospace'>Consolas</option>
+                            </datalist>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Size</label>
+                            <input type="number" x-model="settings.size" class="w-16 text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Weight</label>
+                            <select x-model="settings.weight" class="w-28 text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500">
+                                <option value="400">Regular</option>
+                                <option value="500">Medium</option>
+                                <option value="600">Semibold</option>
+                                <option value="700">Bold</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 ml-2 border-l border-slate-300 pl-4">
+                            <input type="checkbox" id="corpus_italic" x-model="settings.italic" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500">
+                            <label for="corpus_italic" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Italic</label>
+                        </div>
+                        <div class="flex items-center gap-2 ml-2 border-l border-slate-300 pl-4">
+                                    <input type="checkbox" id="corpus_italic" x-model="settings.italic" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500">
+                                    <label for="corpus_italic" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Italic</label>
+                                </div>
+                                
+                                <div class="flex items-center gap-2 ml-4 pl-4 border-l border-slate-300">
+                                    <label class="relative inline-flex items-center cursor-pointer mt-1">
+                                        <input type="checkbox" x-model="xRayMode" class="sr-only peer">
+                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 shadow-inner"></div>
+                                        <span class="ml-2 text-xs font-black text-purple-700 uppercase tracking-widest flex items-center gap-1">🥽 X-Ray</span>
+                                    </label>
+                                </div>
+                        
+                        <div class="ml-auto text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
+                            💡 Tip: Click any word to translate
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto bg-[#faf9f6] p-10 min-h-0">
+                    <div class="max-w-3xl mx-auto pb-10">
+                        <p class="whitespace-pre-wrap leading-[2.2] tracking-wide text-slate-800" 
+                           :style="`font-family: ${settings.font}; font-size: ${settings.size}px; font-weight: ${settings.weight}; font-style: ${settings.italic ? 'italic' : 'normal'};`"
+                           @click="handleWordClick($event)"
+                           x-html="renderClickableText(activePassageText)"></p>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>

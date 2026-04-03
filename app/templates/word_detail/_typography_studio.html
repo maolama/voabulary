@@ -1,0 +1,64 @@
+<div x-data="typographyStudio()" @open-typography.window="isOpen = true">
+    <div x-show="isOpen" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[200] backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col h-[85vh] m-4 animate-fade-in-up" @click.away="isOpen = false">
+            
+            <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex justify-between items-center rounded-t-2xl">
+                <h3 class="font-black text-white text-lg flex items-center gap-2">🎨 Theme & Typography Studio</h3>
+                <div class="flex items-center gap-4">
+                    <button @click="resetDefaults()" class="text-sm font-bold text-indigo-300 hover:text-white">Reset to Defaults</button>
+                    <button @click="isOpen = false" class="text-slate-400 hover:text-rose-500 font-bold text-xl px-2 py-1">✕</button>
+                </div>
+            </div>
+
+            <div class="flex-grow overflow-y-auto p-6 bg-slate-50 flex flex-col gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% macro font_controls(title, area, lang) %}
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-bold text-slate-700 uppercase tracking-widest text-xs mb-4 border-b border-slate-100 pb-2">{{ title }}</h4>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Font Family</label>
+                        <input type="text" x-model="settings.{{area}}.{{lang}}.font" list="fonts-list-{{lang}}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 mb-4 outline-none">
+                        <div class="flex gap-4 mb-4">
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Size (px)</label>
+                                <input type="number" x-model="settings.{{area}}.{{lang}}.size" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Weight</label>
+                                <select x-model="settings.{{area}}.{{lang}}.weight" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    <option value="400">Regular (400)</option>
+                                    <option value="500">Medium (500)</option>
+                                    <option value="600">Semibold (600)</option>
+                                    <option value="700">Bold (700)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="{{area}}_{{lang}}_italic" x-model="settings.{{area}}.{{lang}}.italic" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500">
+                            <label for="{{area}}_{{lang}}_italic" class="ml-2 text-sm font-medium text-slate-700">Enable Italic Style</label>
+                        </div>
+                    </div>
+                    {% endmacro %}
+
+                    {{ font_controls('📚 Definitions (English)', 'def', 'en') }}
+                    {{ font_controls('📚 Definitions (Persian)', 'def', 'fa') }}
+                    {{ font_controls('💬 Examples (English)', 'ex', 'en') }}
+                    {{ font_controls('💬 Examples (Persian)', 'ex', 'fa') }}
+                    {{ font_controls('🔗 Relations/Tags (English)', 'rel', 'en') }}
+                    {{ font_controls('🔗 Relations (Persian)', 'rel', 'fa') }}
+                    {{ font_controls('📝 Notes (English)', 'note', 'en') }}
+                    {{ font_controls('🎓 Academic Corpus (English)', 'corp', 'en') }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <datalist id="fonts-list-en">
+        <option value='"Segoe UI", system-ui, sans-serif'>Windows Default</option>
+        <option value='"Times New Roman", serif'>Times New Roman</option>
+        <option value='Arial, sans-serif'>Arial</option>
+    </datalist>
+    <datalist id="fonts-list-fa">
+        <option value='"Vazirmatn", Tahoma, sans-serif'>Vazirmatn</option>
+        <option value='Tahoma, sans-serif'>Tahoma</option>
+    </datalist>
+</div>

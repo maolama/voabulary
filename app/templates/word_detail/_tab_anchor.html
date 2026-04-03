@@ -1,0 +1,140 @@
+<div x-show="activeTab === 'anchor'" x-cloak>
+    <div x-data="notesEngine({{ word.id }}, JSON.parse(document.getElementById('safedata-custom').textContent))">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 border-b border-slate-200 pb-3 gap-4">
+            <div class="text-sm font-medium text-slate-500">
+                Your personalized notes, mnemonics, and translations.
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <button @click="$dispatch('open-typography')" class="text-xs font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition flex items-center gap-1 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm mr-2">
+                    🎨 Theme Studio
+                </button>
+
+                <a :href="`/api/words/${wordId}/export`" target="_blank" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                    📥 Export
+                </a>
+                
+                <label class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm cursor-pointer">
+                    📤 Import
+                    <input type="file" accept=".json" class="hidden" @change="importJsonFile($event)">
+                </label>
+
+                <button @click="openEditor()" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 border-l pl-3 border-slate-200">
+                    ✏️ Edit
+                </button>
+                
+                <button @click="fillWithAI()" :disabled="isGenerating" class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow hover:shadow-md hover:scale-105 transition disabled:opacity-50 flex items-center gap-2">
+                    <span x-show="!isGenerating">✨ Auto-Fill with AI</span>
+                    <span x-show="isGenerating" class="flex items-center gap-2">
+                        <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Consulting AI...
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <div x-show="customData && !isGenerating" class="space-y-6 animate-fade-in-up">
+            <template x-for="posBlock in customData" :key="posBlock.partOfSpeech">
+                <div class="bg-white rounded-2xl p-6 border-l-4 border-indigo-500 shadow-sm">
+                    
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                        <span class="text-lg font-black text-indigo-800 uppercase tracking-widest" x-text="posBlock.partOfSpeech"></span>
+                        <div class="flex space-x-3 text-sm font-mono text-slate-500">
+                            <span x-show="posBlock.usPronunciation" x-text="'US: ' + posBlock.usPronunciation"></span>
+                            <span x-show="posBlock.ukPronunciation" x-text="'UK: ' + posBlock.ukPronunciation"></span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <template x-for="(meaning, index) in posBlock.meanings" :key="index">
+                            <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                <div class="flex justify-between items-start gap-4">
+                                    <p class="txt-def-en text-slate-800" x-text="meaning.definition"></p>
+                                    <span x-show="meaning.translation" class="txt-def-fa shrink-0 bg-rose-100 text-rose-800 px-3 py-1 rounded-lg shadow-sm" dir="rtl" x-text="meaning.translation"></span>
+                                </div>
+                                <p class="txt-ex-en text-slate-600 mt-2" x-show="meaning.example" x-text="`&quot;${meaning.example}&quot;`"></p>
+                                <div x-show="meaning.mnemonic" class="txt-note-en mt-4 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg flex items-start gap-3 shadow-inner">
+                                    <span class="text-xl font-sans">💡</span>
+                                    <span class="pt-0.5" x-text="meaning.mnemonic"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="posBlock.generalExamples && posBlock.generalExamples.length > 0" class="mt-6">
+                        <span class="font-bold text-slate-400 uppercase text-xs mb-2 block">General Examples</span>
+                        <ul class="space-y-2">
+                            <template x-for="(ex, index) in posBlock.generalExamples" :key="index">
+                                <li>
+                                    <span class="txt-ex-en text-slate-700 block mb-0.5" x-text="`• ${ex.example}`"></span>
+                                    <span class="txt-ex-fa text-slate-500 block pl-3" dir="rtl" x-text="ex.translation"></span>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-6">
+                        <div x-show="posBlock.synonyms && posBlock.synonyms.length > 0">
+                            <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Synonyms</span>
+                            <div class="flex flex-wrap gap-1">
+                                <template x-for="syn in posBlock.synonyms">
+                                    <span class="txt-rel-en bg-emerald-50 border border-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md" x-text="syn"></span>
+                                </template>
+                            </div>
+                        </div>
+                        <div x-show="posBlock.collocations && posBlock.collocations.length > 0">
+                            <span class="font-bold text-slate-400 uppercase text-xs block mb-1">Collocations</span>
+                            <div class="flex flex-wrap gap-1">
+                                <template x-for="col in posBlock.collocations">
+                                    <span class="txt-rel-en bg-blue-50 border border-blue-100 text-blue-700 px-2 py-0.5 rounded-md" x-text="col"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div x-show="posBlock.notes && posBlock.notes.length > 0" class="mt-4 p-4 bg-slate-50 rounded-xl text-slate-700 border border-slate-200">
+                        <span class="font-bold text-slate-800 mb-2 block text-sm">📝 Notes & Tips:</span>
+                        <ul class="space-y-1 pl-1">
+                            <template x-for="(note, nIndex) in posBlock.notes" :key="nIndex">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-indigo-400 mt-0.5 text-sm">•</span>
+                                    <span class="txt-note-en" x-text="note"></span>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div x-show="!customData && !isGenerating" class="text-center py-12 bg-white border-2 border-dashed border-slate-200 rounded-2xl">
+            <div class="text-5xl mb-4">🪹</div>
+            <h3 class="text-slate-800 text-xl font-bold mb-2">No Brain Anchors yet.</h3>
+            <p class="text-slate-500 text-sm mb-6 max-w-md mx-auto">Use the AI Auto-Fill to generate a rich, bilingual profile, or import your legacy Google Sheets JSON.</p>
+            <button @click="fillWithAI()" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-xl shadow-md hover:bg-indigo-700 transition">
+                Generate Profile
+            </button>
+        </div>
+
+        <div x-show="isEditing" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-sm" x-cloak>
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col h-[85vh] m-4 animate-fade-in-up" @click.away="isEditing = false">
+                <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                    <h3 class="font-black text-slate-800">✏️ Raw JSON Editor</h3>
+                    <button @click="isEditing = false" class="text-slate-400 hover:text-rose-500 font-bold px-2 py-1">Close ✕</button>
+                </div>
+                <div class="flex-grow p-4 bg-slate-900">
+                    <textarea x-model="rawEditorContent" class="txt-note-en w-full h-full bg-slate-900 text-emerald-400 p-2 focus:outline-none resize-none" spellcheck="false"></textarea>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-b-2xl flex justify-between items-center border-t border-slate-200">
+                    <button @click="saveManualEdits()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-8 rounded-lg shadow transition">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {% include 'word_detail/_typography_studio.html' %}
+
+    </div>
+</div>

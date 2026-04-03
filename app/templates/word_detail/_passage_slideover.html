@@ -1,0 +1,39 @@
+<div class="fixed inset-y-0 right-0 w-full md:w-[32rem] bg-slate-50 shadow-[-20px_0_40px_rgba(0,0,0,0.1)] z-[100] transform transition-transform duration-500 ease-in-out flex flex-col border-l border-slate-200" 
+     :class="isPassageOpen ? 'translate-x-0' : 'translate-x-full'" x-cloak>
+    
+    <div class="px-6 py-5 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm z-10">
+        <div>
+            <h3 class="font-black text-slate-800 text-lg flex items-center gap-2">📖 Reading Passage</h3>
+            <p class="text-xs font-bold text-indigo-600 mt-1 uppercase tracking-widest" x-text="passageData.section_name"></p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a :href="`/?tab=corpus&section_id=${selectedSectionId}&name=${encodeURIComponent(passageData.section_name)}`" 
+               class="hidden md:flex bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-2 rounded-lg border border-indigo-200 transition-colors items-center gap-1">
+                🚀 Open Explorer
+            </a>
+            
+            <button @click="closePassage()" class="bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+                <span class="font-bold text-xl">✕</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-grow overflow-y-auto p-6 md:p-8 bg-white txt-corp-en leading-loose text-slate-800 relative">
+        
+        <div x-show="loadingPassage" class="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+            <svg class="animate-spin h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        </div>
+
+        <template x-for="para in passageData.paragraphs" :key="para.id">
+            <p class="mb-4 text-justify"> <template x-for="sent in para.sentences" :key="sent.id">
+                    <span :id="'sent-' + sent.id" 
+                          class="transition-colors duration-700"
+                          :class="sent.id === targetSentenceId ? 'bg-amber-100/80 rounded py-1 px-0.5 shadow-[0_0_0_2px_rgba(254,243,199,0.8)]' : ''"
+                          x-html="sent.id === targetSentenceId ? highlightWord(sent.text, targetWordForm) : sent.text + ' '">
+                    </span>
+                </template>
+                
+            </p>
+        </template>
+    </div>
+</div>

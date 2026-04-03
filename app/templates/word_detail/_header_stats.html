@@ -1,0 +1,29 @@
+<div class="mb-4">
+    <a href="/words" class="text-indigo-600 hover:underline">&larr; Back to Archive</a>
+</div>
+
+<div class="flex justify-between items-end mb-6">
+    <h1 class="text-5xl font-black text-slate-900" x-text="targetWord"></h1>
+    <button onclick="window.playTTSAudio('{{ word.word }}')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-3 rounded-full shadow-sm transition-transform active:scale-95">
+        🔊 Listen
+    </button>
+</div>
+
+<div class="grid grid-cols-4 gap-4 mb-8">
+    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+        <p class="text-xs text-slate-500 uppercase font-bold">Total Reviews</p>
+        <p class="text-2xl font-bold text-slate-800">{{ word.total_reviews }}</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+        <p class="text-xs text-slate-500 uppercase font-bold">Current Streak</p>
+        <p class="text-2xl font-bold text-blue-600">{{ word.repetitions }}</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+        <p class="text-xs text-slate-500 uppercase font-bold">Next Interval</p>
+        <p class="text-2xl font-bold text-emerald-600">{{ word.interval }} days</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+        <p class="text-xs text-slate-500 uppercase font-bold">Ease Factor</p>
+        <p class="text-2xl font-bold text-amber-500">{{ "%.2f"|format(word.ease_factor) }}</p>
+    </div>
+</div>
